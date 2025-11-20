@@ -21,9 +21,6 @@ def executar_compilacao(arquivo = '', codigo = ''):
     tradutor.traduzir()
 
 def main():
-    # --------------------------
-    # Espaço reservado para CLI
-    # --------------------------
     if len(sys.argv) < 2:
         print("Uso: python main.py <arquivo_fonte>")
         return
