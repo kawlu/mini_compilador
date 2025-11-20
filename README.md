@@ -1,10 +1,70 @@
-O analisador de código funciona da seguinte forma.
+## mini_lang — Gramática (EBNF)
 
-Você precisa fazer uma equação. Sempre com o id a esquerda, para que ele realize normalmente a árvore sem recursão a esquerda.
+A gramática abaixo descreve a linguagem suportada pelo analisador sintático atual (`sintatico.py`).
 
-Exemplos: ID = (2 + 1) * 3;
-VALOR = 3 * (2 + 1) / 5;
+- **Operandos:** `ID`, `NUMERO`, expressões entre parênteses
+- **Operadores unários:** `-` e `NOT`
+- **Operadores binários (com precedência):**
+  1. `*`, `/` (mais alta)
+  2. `+`, `-`
+  3. `<`, `<=`, `>`, `>=`
+  4. `==`, `!=`
+  5. `E` (`&&`)
+  6. `OU` (`||`)
+  7. `=` (atribuição) — associativa à direita
 
-Para o compilador visual funcionar basta fazer o mesmo, mas apenas uma equação por arquivo txt. Caso estejam duas equações ou mais em um arquivo, ele irá compilar apenas a primeira.
+### Gramática (EBNF)
+```ebnf
+programa       ::= { comando } ;
 
-O arquivo que será lido pelo analisador de código deve estar sempre no formato "programa exemplo.txt"
+comando        ::= atribuicao ";" ;
+
+atribucao      ::= ID "=" atribuicao
+                | expressao ;
+
+expressao      ::= log_or ;
+
+log_or         ::= log_and { ("OU" | "||") log_and } ;
+
+log_and        ::= igualdade { ("E" | "&&") igualdade } ;
+
+igualdade      ::= rel { ("==" | "!=") rel } ;
+
+rel            ::= soma { ("<" | "<=" | ">" | ">=") soma } ;
+
+soma           ::= termo { ("+" | "-") termo } ;
+
+termo          ::= unario { ("*" | "/") unario } ;
+
+unario         ::= ("-" | "NOT" | "!") unario
+                | fator ;
+
+fator          ::= ID
+                | NUMERO
+                | "(" expressao ")" ;
+```
+
+### Exemplos válidos
+- `a = b + 3 * 2;`  &nbsp;&nbsp;→  `b 3 2 * + =` (pós-fixa esperada)
+- `x = -a + NOT b;`
+- `ok = (a < b) E (c == d);`
+
+### Observações e mapeamento para o lexer
+- Mapeie os símbolos para os nomes de token que o parser espera. Exemplo:
+  - `+` -> `SOMA`, `-` -> `SUB`, `*` -> `MULT`, `/` -> `DIV`
+  - `==` -> `IGUAL`, `!=` -> `DIF`
+  - `&&` ou `E` -> `E`, `||` ou `OU` -> `OU`
+  - `NOT` ou `!` -> `NOT`
+  - `=` -> `ATRIBUICAO`, `;` -> `FIM`
+
+### Precedência e associatividade (resumido)
+| Nível | Operadores                          | Associatividade |
+|-------|-------------------------------------|-----------------|
+| 1     | `=`                                 | Direita         |
+| 2     | `OU`, `||`                          | Esquerda        |
+| 3     | `E`, `&&`                           | Esquerda        |
+| 4     | `==`, `!=`                          | Esquerda        |
+| 5     | `<`, `<=`, `>`, `>=`                | Esquerda        |
+| 6     | `+`, `-`                            | Esquerda        |
+| 7     | `*`, `/`                            | Esquerda        |
+| 8     | `-` (unário), `NOT`, `!`           | (unário)        |
