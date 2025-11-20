@@ -1,9 +1,13 @@
-class AnalisadorSintatico:
+class Sintatico:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos = 0
-        self.token_atual = self.tokens[self.pos] if self.tokens else None
+        self.token_atual = tokens[0] if tokens else None
         self.saida_posfixa = []
+
+    # -------------------------
+    # Utilidades de Navegação
+    # -------------------------
 
     def proximo_token(self):
         self.pos += 1
@@ -13,7 +17,10 @@ class AnalisadorSintatico:
             self.token_atual = None
 
     def erro(self, esperado):
-        raise SyntaxError(f"Erro de sintaxe: esperado '{esperado}', mas encontrado '{self.token_atual[0]}'")
+        raise SyntaxError(
+            f"Erro de sintaxe: esperado '{esperado}', "
+            f"mas encontrado '{self.token_atual[0] if self.token_atual else 'EOF'}'"
+        )
 
     def consumir(self, tipo_esperado):
         if self.token_atual and self.token_atual[0] == tipo_esperado:
@@ -21,25 +28,31 @@ class AnalisadorSintatico:
         else:
             self.erro(tipo_esperado)
 
-    # Implementação das regras da gramática
+    # -------------------------
+    # Gramática
+    # -------------------------
+
     def fator(self):
-        token = self.token_atual
-        if token[0] == 'ID' or token[0] == 'NUMERO':
-            self.saida_posfixa.append(token[1])
-            self.consumir(token[0])
-        elif token[0] == 'LPAREN':
+        tok = self.token_atual
+        if tok[0] in ('ID', 'NUMERO'):
+            self.saida_posfixa.append(tok[1])
+            self.consumir(tok[0])
+
+        elif tok[0] == 'LPAREN':
             self.consumir('LPAREN')
             self.expr()
             self.consumir('RPAREN')
+
         else:
             self.erro("ID, NUMERO ou LPAREN")
 
     def termo_linha(self):
-        if self.token_atual and self.token_atual[0] in ('MULT', 'DIV'):
-            op = self.token_atual
-            self.consumir(op[0])
+        tok = self.token_atual
+        if tok and tok[0] in ('MULT', 'DIV'):
+            op = tok[1]
+            self.consumir(tok[0])
             self.fator()
-            self.saida_posfixa.append(op[1])
+            self.saida_posfixa.append(op)
             self.termo_linha()
 
     def termo(self):
@@ -47,31 +60,40 @@ class AnalisadorSintatico:
         self.termo_linha()
 
     def expr_linha(self):
-        if self.token_atual and self.token_atual[0] in ('SOMA', 'SUB'):
-            op = self.token_atual
-            self.consumir(op[0])
+        tok = self.token_atual
+        if tok and tok[0] in ('SOMA', 'SUB'):
+            op = tok[1]
+            self.consumir(tok[0])
             self.termo()
-            self.saida_posfixa.append(op[1])
+            self.saida_posfixa.append(op)
             self.expr_linha()
 
     def expr(self):
-        self.saida_posfixa = [] # Limpa a saída para cada nova expressão
+        self.saida_posfixa = []
         self.termo()
         self.expr_linha()
         return " ".join(self.saida_posfixa)
 
+    # -------------------------
+    # Comandos
+    # -------------------------
+
     def comando(self):
-        if self.token_atual[0] == 'ID':
+        if self.token_atual and self.token_atual[0] == 'ID':
             self.consumir('ID')
             self.consumir('ATRIBUICAO')
-            resultado_expr = self.expr()
-            print(f"Expressão pós-fixada: {resultado_expr}")
+            resultado = self.expr()
+            print(f"Expressão pós-fixada: {resultado}")
             self.consumir('FIM')
             return True
         return False
 
+    # -------------------------
+    # Entrada principal
+    # -------------------------
+
     def analisar(self):
         while self.token_atual:
             if not self.comando():
-                self.erro("Comando (atribuição)")
-        print("\nAnálise sintática concluída com sucesso.")
+                self.erro("Comando de atribuição")
+        print("Análise sintática concluída.")
