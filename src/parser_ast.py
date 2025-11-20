@@ -3,6 +3,18 @@
 # --- Classes de Nó (AST) ---
 class Node: pass
 
+class BlockNode(Node):
+    def __init__(self, statements):
+        self.statements = statements
+        self.nome = "Bloco"
+
+class IfNode(Node):
+    def __init__(self, condition, true_block, false_block=None):
+        self.condition = condition
+        self.true_block = true_block
+        self.false_block = false_block
+        self.nome = "if"
+
 class BinOpNode(Node):
     def __init__(self, left, op, right):
         self.left = left
@@ -11,15 +23,13 @@ class BinOpNode(Node):
 
 class NumeroNode(Node):
     def __init__(self, token):
-        self.token = token
         self.valor = token[1]
 
 class IdNode(Node):
     def __init__(self, token):
-        self.token = token
         self.nome = token[1]
 
-# --- Parser Robusto ---
+# --- Parser ---
 class ParserAST:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -37,114 +47,129 @@ class ParserAST:
             return True
         else:
             encontrado = self.token_atual[0] if self.token_atual else "EOF"
-            valor = self.token_atual[1] if self.token_atual else ""
-            self.erros.append(f"Erro Sintático: Esperado '{tipo_esperado}', mas encontrou '{encontrado}' ({valor}).")
+            self.erros.append(f"Erro Sintático: Esperado '{tipo_esperado}', encontrou '{encontrado}'.")
             self.proximo_token()
             return False
 
-    def fator(self):
+    # --- Hierarquia de Expressões (Precedência) ---
+    
+    def fator(self): # Nível mais baixo: Números, IDs, Parênteses
         token = self.token_atual
         if not token: return None
         
         if token[0] == 'NUMERO':
             self.consumir('NUMERO')
             return NumeroNode(token)
-        
         elif token[0] == 'ID':
             self.consumir('ID')
             return IdNode(token)
-        
         elif token[0] == 'LPAREN':
             self.consumir('LPAREN')
-            node = self.expr()
-            if not self.consumir('RPAREN'):
-                return node
+            node = self.expressao_logica() # Volta para o topo da hierarquia
+            self.consumir('RPAREN')
             return node
-            
-        else:
-            return None
+        return None
 
-    def termo(self):
+    def termo(self): # Multiplicação e Divisão
         node = self.fator()
-        if not node: return None
-
         while self.token_atual and self.token_atual[0] in ('MULT', 'DIV'):
-            op_token = self.token_atual
-            self.consumir(op_token[0])
-            right_node = self.fator()
-            
-            if right_node:
-                node = BinOpNode(left=node, op=op_token, right=right_node)
-            else:
-                self.erros.append(f"Erro: Operador '{op_token[1]}' sem valor à direita.")
-                return node
+            op = self.token_atual
+            self.consumir(op[0])
+            node = BinOpNode(node, op, self.fator())
         return node
 
-    def expr(self):
+    def expressao_aritmetica(self): # Soma e Subtração
         node = self.termo()
-        if not node: return None
-
         while self.token_atual and self.token_atual[0] in ('SOMA', 'SUB'):
-            op_token = self.token_atual
-            self.consumir(op_token[0])
-            right_node = self.termo()
-            
-            if right_node:
-                node = BinOpNode(left=node, op=op_token, right=right_node)
-            else:
-                self.erros.append(f"Erro: Operador '{op_token[1]}' sem valor à direita.")
-                return node
+            op = self.token_atual
+            self.consumir(op[0])
+            node = BinOpNode(node, op, self.termo())
         return node
 
-    def comando_atribuicao(self):
-        """
-        Nova Sintaxe: ID = Expressão ;
-        """
-        # Verifica ID
-        if not self.token_atual or self.token_atual[0] != 'ID':
-            return None
+    def expressao_comparacao(self): # Maior, Menor, Igual
+        node = self.expressao_aritmetica()
+        while self.token_atual and self.token_atual[0] in ('MAIOR', 'MENOR', 'IGUAL', 'MAIOR_IGUAL', 'MENOR_IGUAL'):
+            op = self.token_atual
+            self.consumir(op[0])
+            node = BinOpNode(node, op, self.expressao_aritmetica())
+        return node
+
+    def expressao_logica(self): # AND (Topo da hierarquia de expressões)
+        node = self.expressao_comparacao()
+        while self.token_atual and self.token_atual[0] == 'AND':
+            op = self.token_atual
+            self.consumir('AND')
+            node = BinOpNode(node, op, self.expressao_comparacao())
+        return node
+
+    # --- Comandos e Blocos ---
+
+    def bloco(self):
+        """ Lê { comando; comando; } """
+        if not self.consumir('LBRACE'): return None
+        comandos = []
+        while self.token_atual and self.token_atual[0] != 'RBRACE':
+            cmd = self.declaracao()
+            if cmd: commands.append(cmd)
+            # Proteção contra loop infinito dentro do bloco
+            if not cmd and self.token_atual[0] != 'RBRACE':
+                 self.proximo_token() 
+        
+        self.consumir('RBRACE')
+        return BlockNode(comandos)
+
+    def declaracao_if(self):
+        self.consumir('IF')
+        condicao = self.expressao_logica() # Lê a condição (ex: x > 10 and y < 5)
+        
+        # Lê o bloco do 'then'
+        bloco_true = self.bloco()
+        
+        bloco_false = None
+        if self.token_atual and self.token_atual[0] == 'ELSE':
+            self.consumir('ELSE')
+            bloco_false = self.bloco()
             
+        return IfNode(condicao, bloco_true, bloco_false)
+
+    def declaracao_atribuicao(self):
         var_node = IdNode(self.token_atual)
         self.consumir('ID')
-        
-        # MUDANÇA AQUI: Verifica ATRIBUICAO (Agora é '=')
-        if not self.token_atual or self.token_atual[0] != 'ATRIBUICAO':
-            self.erros.append("Erro: Esperado '=' após o identificador.")
-            return None
-
-        op_node = self.token_atual
+        op = self.token_atual
         self.consumir('ATRIBUICAO')
-        
-        # Processa a expressão
-        expr_node = self.expr()
-        
-        if not expr_node:
-            self.erros.append("Erro: Expressão inválida ou vazia após '='.")
-            return None
+        expr = self.expressao_logica()
+        self.consumir('FIM')
+        return BinOpNode(var_node, op, expr)
 
-        # MUDANÇA AQUI: Verifica FIM (Agora é ';')
-        if self.token_atual and self.token_atual[0] == 'FIM':
-            self.consumir('FIM')
+    def declaracao(self):
+        """ Decide qual comando executar """
+        if not self.token_atual: return None
+        
+        if self.token_atual[0] == 'IF':
+            return self.declaracao_if()
+        elif self.token_atual[0] == 'ID':
+            return self.declaracao_atribuicao()
         else:
-            self.erros.append("Erro: Esperado ';' (ponto e vírgula) ao final do comando.")
-
-        return BinOpNode(left=var_node, op=op_node, right=expr_node)
+            # Token perdido ou erro
+            return None
 
     def analisar(self):
-        arvores = []
+        # Agora analisamos uma LISTA de comandos (um programa inteiro)
+        comandos = []
         self.erros = []
         
         while self.token_atual:
             start_pos = self.pos
             try:
-                arvore = self.comando_atribuicao()
-                if arvore:
-                    arvores.append(arvore)
+                cmd = self.declaracao()
+                if cmd:
+                    comandos.append(cmd)
                 else:
-                    if self.token_atual:
+                     if self.token_atual:
                         val = self.token_atual[1]
-                        if not self.erros or val not in self.erros[-1]:
-                            self.erros.append(f"Erro: Token inesperado '{val}'.")
+                        # Evita spam de erros
+                        if not self.erros or "Token inesperado" not in self.erros[-1]:
+                             self.erros.append(f"Erro: Token inesperado '{val}'.")
                         self.proximo_token()
             except Exception as e:
                 self.erros.append(f"Erro Fatal: {str(e)}")
@@ -153,4 +178,5 @@ class ParserAST:
             if self.pos == start_pos and self.token_atual:
                 self.proximo_token()
 
-        return arvores, self.erros
+        # Retorna tudo dentro de um nó "Programa" para facilitar o desenho
+        return [BlockNode(comandos)], self.erros
