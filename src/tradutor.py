@@ -1,32 +1,16 @@
-from lexico import AnalisadorLexico
-from sintatico import AnalisadorSintatico
+from src.sintatico import Sintatico
 
-def main():
-    # Carrega o programa de um arquivo texto
-    nome_arquivo = 'programa_exemplo.txt'
-    try:
-        with open(nome_arquivo, 'r') as f:
-            codigo = f.read()
-    except FileNotFoundError:
-        print(f"Erro: Arquivo '{nome_arquivo}' não encontrado.")
-        # Adicionamos uma pausa aqui também, caso o arquivo não seja encontrado
-        input("\nPressione Enter para sair...")
-        return
+class Tradutor:
+    """
+    Orquestra a conversão para pós-fixa e, futuramente,
+    poderá gerar bytecode, AST ou código alvo.
+    """
 
-    # --- Análise Léxica ---
-    lexico = AnalisadorLexico(codigo)
-    tokens = lexico.analisar()
-    lexico.imprimir_tokens() # Imprime todos os tokens gerados
+    def __init__(self, sintatico: Sintatico):
+        self.sintatico = sintatico
 
-    # --- Análise Sintática e Tradução ---
-    sintatico = AnalisadorSintatico(tokens)
-    try:
-        sintatico.analisar()
-    except (SyntaxError, ValueError) as e:
-        print(f"\nErro durante a compilação: {e}")
-
-    # Esta linha fará o programa esperar pela tecla Enter antes de fechar
-    input("\nPressione Enter para sair...")
-
-if __name__ == '__main__':
-    main()
+    def traduzir(self):
+        # Hoje — apenas confirma a execução da análise.
+        # Futuro — gerar código-alvo, AST, três endereços, etc.
+        self.sintatico.analisar()
+        print("Tradução concluída.")
