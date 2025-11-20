@@ -2,12 +2,13 @@
 import sys
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QFileDialog, QDialog, QLabel, QGraphicsDropShadowEffect,
-                             QMessageBox) # Adicionado QMessageBox
+                             QMessageBox)
 from PyQt6.QtGui import (QPainter, QPen, QBrush, QColor, QFont, QMovie,
                          QPainterPath, QRadialGradient, QCursor)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QPointF, QRectF
 
-from lexico import AnalisadorLexico
+# MUDANÇA AQUI: Importa 'Lexico' em vez de 'AnalisadorLexico'
+from lexico import Lexico
 from parser_ast import ParserAST, Node, BinOpNode, NumeroNode, IdNode
 
 # --- PALETA DE CORES ---
@@ -23,9 +24,7 @@ COLORS = {
     'shadow':     QColor(0, 0, 0, 80)
 }
 
-# --- THREAD DO COMPILADOR ---
 class CompilerThread(QThread):
-    # Sinal agora emite duas listas: (lista_arvores, lista_erros)
     finished = pyqtSignal(list, list)
 
     def __init__(self, file_path):
@@ -33,18 +32,15 @@ class CompilerThread(QThread):
         self.file_path = file_path
 
     def run(self):
-        arvores = []
-        erros = []
         try:
             with open(self.file_path, 'r') as f:
                 code = f.read()
             
-            # Etapa 1: Léxico
-            lexer = AnalisadorLexico(code)
+            # Etapa 1: Léxico (Usando a nova classe Lexico)
+            lexer = Lexico(code)
             tokens, erros_lexicos = lexer.analisar()
             
             if erros_lexicos:
-                # Se houver erro léxico, paramos e reportamos
                 self.finished.emit([], erros_lexicos)
                 return
 
@@ -52,14 +48,15 @@ class CompilerThread(QThread):
             parser = ParserAST(tokens)
             arvores, erros_sintaticos = parser.analisar()
             
-            # Emite o resultado (pode ter árvores parciais E erros sintáticos)
             self.finished.emit(arvores, erros_sintaticos)
 
         except Exception as e:
-            # Erro genérico (arquivo não encontrado, crash do python, etc)
             self.finished.emit([], [f"Erro Crítico: {str(e)}"])
 
-# --- MODAL DE CARREGAMENTO ---
+# --- RESTANTE DO ARQUIVO IGUAL AO ANTERIOR ---
+# (LoadingDialog, TreeWidget e MainWindow permanecem iguais,
+# apenas copie o restante do código que você já tinha)
+
 class LoadingDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,12 +64,10 @@ class LoadingDialog(QDialog):
         self.setFixedSize(150, 120)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(f"background-color: {COLORS['header_bg'].name()}; color: white; border: 1px solid #444;")
-
         layout = QVBoxLayout()
         self.lbl = QLabel("Analisando...", self)
         self.lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl.setFont(QFont("Segoe UI", 12))
-        
         try:
             self.movie = QMovie("loading.gif")
             if self.movie.isValid():
@@ -81,11 +76,9 @@ class LoadingDialog(QDialog):
                 self.movie.start()
                 layout.addWidget(self.lbl_gif, alignment=Qt.AlignmentFlag.AlignCenter)
         except: pass
-
         layout.addWidget(self.lbl)
         self.setLayout(layout)
 
-# --- WIDGET DA ÁRVORE ---
 class TreeWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -94,21 +87,16 @@ class TreeWidget(QWidget):
         self.nodes_to_draw = []
         self.lines_to_draw = []
         self.subtree_widths = {} 
-
-        # Constantes
         self.NODE_SIZE = 50
         self.MIN_GAP_X = 30     
         self.LEVEL_GAP_Y = 100  
-
         self.animation_timer = QTimer(self)
         self.animation_timer.timeout.connect(self.animate_step)
         self.animation_index = 0
-
         self.zoom = 1.0
         self.offset = QPointF(0, 0)
         self.last_mouse = QPointF(0, 0)
         self.is_panning = False
-        
         self.setMouseTracking(True)
 
     def set_ast(self, ast):
@@ -120,7 +108,6 @@ class TreeWidget(QWidget):
         self.animation_index = 0
         self.zoom = 1.0
         self.offset = QPointF(0, 0)
-
         if self.ast:
             total_width = self.calc_subtree_width(self.ast)
             start_x = self.width() // 2
@@ -149,17 +136,14 @@ class TreeWidget(QWidget):
         pos = QPointF(cx, cy)
         self.node_positions[node] = pos
         self.nodes_to_draw.append(node)
-        
         if isinstance(node, BinOpNode):
             next_y = cy + self.LEVEL_GAP_Y
             wl = self.subtree_widths.get(node.left, 0)
             wr = self.subtree_widths.get(node.right, 0)
-            
             left_box_start = cx - (available_width / 2)
             pos_lx = left_box_start + (wl / 2)
             gap = self.MIN_GAP_X if (node.left and node.right) else 0
             pos_rx = left_box_start + wl + gap + (wr / 2)
-
             if node.left:
                 self.assign_positions(node.left, pos_lx, next_y, wl)
                 self.lines_to_draw.append((pos, self.node_positions[node.left]))
@@ -236,29 +220,23 @@ class TreeWidget(QWidget):
                 qp.drawText(QRectF(pos.x()-r, pos.y()-r, r*2, r*2), Qt.AlignmentFlag.AlignCenter, txt)
                 items_drawn += 1
 
-# --- JANELA PRINCIPAL ---
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Visualizador de AST")
         self.resize(1100, 800)
         self.setStyleSheet(f"background-color: {COLORS['background'].name()};")
-
         header = QWidget(); header.setStyleSheet(f"background-color: {COLORS['header_bg'].name()}; border-bottom: 2px solid #181a1f;")
         header.setFixedHeight(70)
         hl = QHBoxLayout(); hl.setContentsMargins(20, 0, 20, 0)
-        
         btn = QPushButton("📂 Carregar Arquivo")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(f"QPushButton {{ background-color: {COLORS['accent'].name()}; color: #282c34; font-weight: bold; border-radius: 5px; padding: 8px 15px; }} QPushButton:hover {{ background-color: {COLORS['accent'].lighter(110).name()}; }}")
         btn.clicked.connect(self.open_file)
-        
         title = QLabel("Visualizador de AST"); title.setStyleSheet(f"color: {COLORS['text_main'].name()}; font-size: 22px; font-weight: bold;")
         eff = QGraphicsDropShadowEffect(); eff.setBlurRadius(10); eff.setColor(QColor(0,0,0,150)); title.setGraphicsEffect(eff)
-
         hl.addWidget(btn); hl.addStretch(); hl.addWidget(title); hl.addStretch(); hl.addWidget(QWidget())
         header.setLayout(hl)
-
         self.tree_view = TreeWidget()
         layout = QVBoxLayout(); layout.setContentsMargins(0,0,0,0); layout.addWidget(header); layout.addWidget(self.tree_view)
         container = QWidget(); container.setLayout(layout); self.setCentralWidget(container)
@@ -274,16 +252,11 @@ class MainWindow(QMainWindow):
 
     def on_finished(self, arvores, erros):
         self.loading.close()
-        
-        # Se houver erros, mostramos o popup
         if erros:
             self.show_error_popup(erros)
-        
-        # Se tivermos alguma árvore (mesmo que com erro parcial), desenhamos a primeira
         if arvores:
             self.tree_view.set_ast(arvores[0])
         elif not erros:
-            # Caso raro: sem erros mas sem árvore (arquivo vazio?)
             QMessageBox.warning(self, "Aviso", "Nenhuma estrutura reconhecida no arquivo.")
 
     def show_error_popup(self, erros):
@@ -291,13 +264,9 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle("Erros de Compilação")
         msg.setIcon(QMessageBox.Icon.Critical)
         msg.setText("Foram encontrados erros no código:")
-        
-        # Formata a lista de erros para exibição
         detalhes = "\n".join([f"• {e}" for e in erros])
         msg.setDetailedText(detalhes)
         msg.setInformativeText(f"{len(erros)} erro(s) encontrado(s). Verifique 'Show Details'.")
-        
-        # Estilizando o popup para ficar Dark Mode também
         msg.setStyleSheet("""
             QMessageBox { background-color: #282c34; }
             QLabel { color: #abb2bf; }
