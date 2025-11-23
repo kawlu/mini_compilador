@@ -31,13 +31,13 @@ def executar_compilacao(arquivo='', codigo=''):
         tradutor.traduzir(arvore[0])
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] == "-i" "--interativo":
-        print("--- MODO INTERATIVO (Digite 'OK' em uma nova linha para compilar, ou 'FIM' para cancelar.) ---")
+    if len(sys.argv) < 2 or sys.argv[1] in ("-i", "--interativo"):
+        print("--- MODO INTERATIVO (Digite 'OK' em uma nova linha para compilar, ou 'SAIR' para cancelar.) ---")
         linhas = []
         while True:
             try:
                 l = input(">> ")
-                if l == "FIM": break
+                if l.upper() == "SAIR": break
                 if l.upper() == "OK": executar_compilacao(codigo="\n".join(linhas)); linhas = []
                 else: linhas.append(l)
             except: break

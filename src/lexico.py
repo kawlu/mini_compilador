@@ -5,7 +5,38 @@ class Lexico:
         self.codigo_fonte = codigo_fonte
         self.tokens = []
         self.erros = []
+        self.linhas = codigo_fonte.split('\n')
 
+    def _formatar_erro(self, pos_global: int, char: str):
+        COR = "\033[31m"    # vermelho
+        RESET = "\033[0m"
+
+        # Descobre linha e coluna
+        contador = 0
+        for num_linha, conteudo in enumerate(self.linhas, start=1):
+            if contador + len(conteudo) + 1 > pos_global:
+                coluna = pos_global - contador
+                break
+            contador += len(conteudo) + 1
+
+        linha_original = self.linhas[num_linha - 1]
+
+        # Pinta o(s) caractere(s) problemático(s)
+        linha_colorida = (
+            linha_original[:coluna] +
+            f"{COR}{char}{RESET}" +
+            linha_original[coluna + len(char):]
+        )
+
+        underline = " " * coluna + f"{COR}^{RESET}"
+
+        return (
+            f"Erro Léxico na linha {num_linha}, coluna {coluna + 1}: caractere inesperado '{char}'\n"
+            f"    {linha_colorida}\n"
+            f"    {underline}"
+        )
+    
+    
     def analisar(self):
         self.tokens = []
         self.erros = []
@@ -58,11 +89,12 @@ class Lexico:
         for mo in re.finditer(regex, self.codigo_fonte):
             tipo = mo.lastgroup
             valor = mo.group()
-
+            pos_global = mo.start()
+            
             if tipo in ('ESPACO', 'COMENTARIO'):
                 continue
             elif tipo == 'ERRO':
-                self.erros.append(f"Erro Léxico: Caractere '{valor}' na posição {mo.start()}")
+                self.erros.append(self._formatar_erro(pos_global, valor))
             else:
                 self.tokens.append((tipo, valor))
         
