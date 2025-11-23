@@ -34,6 +34,8 @@ class Sintatico:
 
     def fator(self):
         tok = self.token_atual
+        if not tok: self.erro("Fator inesperado (EOF)")
+
         if tok[0] in ('ID', 'NUMERO'):
             self.saida_posfixa.append(tok[1])
             self.consumir(tok[0])
@@ -83,7 +85,7 @@ class Sintatico:
             self.consumir('ID')
             self.consumir('ATRIBUICAO')
             resultado = self.expr()
-            print(f"Expressão pós-fixada: {resultado}")
+            print(f"Expressão pós-fixada gerada: {resultado}")
             self.consumir('FIM')
             return True
         return False
@@ -93,7 +95,11 @@ class Sintatico:
     # -------------------------
 
     def analisar(self):
+        if not self.tokens:
+            print("Aviso: Nenhum token para analisar.")
+            return
+
         while self.token_atual:
             if not self.comando():
-                self.erro("Comando de atribuição")
-        print("Análise sintática concluída.")
+                self.erro("Comando de atribuição (ID = expr;)")
+        print("Análise sintática concluída com sucesso.")

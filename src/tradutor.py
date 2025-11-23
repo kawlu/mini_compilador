@@ -10,7 +10,6 @@ class Tradutor:
         self.sintatico = sintatico
 
     def traduzir(self):
-        # Hoje — apenas confirma a execução da análise.
-        # Futuro — gerar código-alvo, AST, três endereços, etc.
+        print("Iniciando tradução...")
         self.sintatico.analisar()
-        print("Tradução concluída.")
+        print("Processo de tradução finalizado.")
