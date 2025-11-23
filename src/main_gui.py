@@ -7,9 +7,10 @@ from PyQt6.QtGui import (QPainter, QPen, QBrush, QColor, QFont, QMovie,
                          QPainterPath, QRadialGradient, QCursor)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QPointF, QRectF
 
-# Importa o Lexico e os Nós do Parser
+# Importa o Lexico, Semantico e os Nós do Parser
 from lexico import Lexico
 from parser_ast import ParserAST, Node, BinOpNode, NumeroNode, IdNode, IfNode, BlockNode
+from semantico import Semantico
 
 # --- CORES ---
 COLORS = {
@@ -34,15 +35,32 @@ class CompilerThread(QThread):
         self.file_path = file_path
     def run(self):
         try:
-            with open(self.file_path, 'r') as f: code = f.read()
+            with open(self.file_path, 'r') as f:
+                code = f.read()
+
             lexer = Lexico(code)
             tokens, erros_lexicos = lexer.analisar()
             if erros_lexicos:
-                self.finished.emit([], erros_lexicos); return
+                self.finished.emit([], erros_lexicos)
+                return
+
             parser = ParserAST(tokens)
             arvores, erros_sintaticos = parser.analisar()
-            self.finished.emit(arvores, erros_sintaticos)
-        except Exception as e: self.finished.emit([], [f"Erro Crítico: {str(e)}"])
+            if erros_sintaticos:
+                self.finished.emit([], erros_sintaticos)
+                return
+
+            semantico = Semantico(arvores[0])
+            erros_semanticos = semantico.analisar()
+            if erros_semanticos:
+                self.finished.emit([], erros_semanticos)
+                return
+
+            self.finished.emit(arvores, [])
+
+        except Exception as e:
+            self.finished.emit([], [f"Erro Crítico: {str(e)}"])
+
 
 # --- WIDGET DA ÁRVORE (MANTIDO IGUAL AO ANTERIOR) ---
 class TreeWidget(QWidget):
