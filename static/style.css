@@ -1,0 +1,135 @@
+body {
+    background-color: #ffffff;
+    color: #111827;
+    transition: background-color 0.3s, color 0.3s;
+    font-family: 'Inter', sans-serif;
+}
+
+.area-codigo {
+    background-color: #f3f4f6;
+    color: #111827;
+    border: 1px solid #d1d5db;
+    resize: vertical;
+    min-height: 250px;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-family: 'Geist Mono', 'Consolas', monospace;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-x: auto;
+}
+
+.cartao {
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.aba-ativa {
+    border-bottom: 2px solid #000000;
+    color: #000000 !important;
+    font-weight: 600;
+}
+
+.alerta {
+    border-radius: 0.5rem;
+    border-width: 1px;
+}
+
+.alerta-erro {
+    background-color: #fee2e2;
+    border-color: #fca5a5;
+    color: #b91c1c;
+}
+
+.alerta-sucesso {
+    background-color: #d1fae5;
+    border-color: #6ee7b7;
+    color: #047857;
+}
+
+.btn-primario {
+    background-color: #000000;
+    color: #ffffff !important;
+}
+
+.btn-primario:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.btn-limpar {
+    background-color: #b91c1c;
+    color: #ffffff;
+    border: 1px solid #b91c1c;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-limpar:hover {
+    background-color: #ffffff;
+    color: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.painel-saida {
+    padding-top: 1.5rem;
+}
+
+@media (max-width: 1023px) {
+    .painel-saida {
+        padding-top: 1.5rem;
+    }
+}
+
+/* tema escuro */
+html.dark body {
+    background-color: #000000;
+    color: #F0F0F0;
+}
+
+html.dark .area-codigo {
+    background-color: #252525;
+    color: #F0F0F0;
+    border: 1px solid #404040;
+}
+
+html.dark .cartao {
+    background-color: #000000;
+    border-color: #404040;
+}
+
+html.dark .aba-ativa {
+    border-bottom: 2px solid #A0A0A0;
+    color: #A0A0A0 !important;
+}
+
+html.dark .alerta-erro {
+    background-color: #500000;
+    border-color: #800000;
+    color: #FFC0C0;
+}
+
+html.dark .alerta-sucesso {
+    background-color: #064e3b;
+    border-color: #10b981;
+    color: #a7f3d0;
+}
+
+html.dark .btn-primario {
+    background-color: #A0A0A0;
+    color: #000000 !important;
+}
+
+html.dark .btn-limpar {
+    background-color: #FFC0C0;
+    color: #000000;
+    border-color: #FFC0C0;
+}
+
+html.dark .btn-limpar:hover {
+    background-color: #000000;
+    color: #FFC0C0;
+    border-color: #FFC0C0;
+}
