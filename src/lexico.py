@@ -10,7 +10,7 @@ class Lexico:
         self.tokens = []
         self.erros = []
 
-        #TODO Adicionar expoente (*), "ou" e loops (enquanto e para (cond))
+        #TODO Adicionar expoente (*), "ou" e loops (enquanto e para (exp))
         regras_tokens = [
             ('SE',            r'se'),
             ('ENTAO',          r'entao'),

@@ -46,20 +46,20 @@ def main():
     # CLI - Interface de Linha de Comando
     # --------------------------
     if len(sys.argv) < 2:
-        print("Uso: python main.py <arquivo_fonte> ou python main.py interativo")
+        print("Uso: python main.py <arquivo_fonte> ou python main.py --interativo | -i")
         return
     
-    if sys.argv[1] == "interativo":
+    if sys.argv[1] in ("-i", "--interativo"):
         print("--- MODO INTERATIVO ---")
-        print("Digite o código. Digite 'OK' em uma nova linha para compilar, ou 'FIM' para finalizar.")
+        print("Digite o código. Digite 'OK' em uma nova linha para compilar, ou 'FIM' para cancelar.")
         
         linhas = []
         while True:
             try:
                 linha = input(">> ")
-                if linha == "FIM":
+                if linha.upper() == "FIM":
                     break
-                if linha == "OK":
+                if linha.upper() == "OK":
                     codigo = "\n".join(linhas)
                     executar_compilacao(codigo=codigo)
                     linhas = [] # Limpa para o próximo teste
