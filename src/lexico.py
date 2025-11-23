@@ -10,29 +10,45 @@ class Lexico:
         self.tokens = []
         self.erros = []
 
-        #TODO Adicionar expoente (*), "ou" e loops (enquanto e para (exp))
+        # A ordem é CRÍTICA: Palavras maiores e compostas vêm primeiro!
         regras_tokens = [
+            # Palavras Reservadas (Comandos)
+            ('SENAO',         r'senao'),     # Antes de 'se'
+            ('ENTAO',         r'entao'),     # Antes de 'e'
+            ('ENQUANTO',      r'enquanto'),  # Antes de 'e'
+            ('PARA',          r'para'),
             ('SE',            r'se'),
-            ('ENTAO',          r'entao'),
-            ('E',           r'e'),
+            ('E',             r'e'),
+            ('OU',            r'ou'),
+
+            # Símbolos Estruturais
             ('FIM',           r';'),
-            ('LBRACE',        r'\{'),        # Abre bloco
-            ('RBRACE',        r'\}'),        # Fecha bloco
-            ('ID',            r'[a-zA-Z_][a-zA-Z0-9_]*'),
-            ('NUMERO',        r'\d+(\.\d+)?'),
-            ('IGUAL',         r'=='),        # Comparação
-            ('ATRIBUICAO',    r'='),         # Atribuição
+            ('LBRACE',        r'\{'),
+            ('RBRACE',        r'\}'),
+            ('LPAREN',        r'\('),
+            ('RPAREN',        r'\)'),
+
+            # Operadores Compostos
+            ('IGUAL',         r'=='),
             ('MAIOR_IGUAL',   r'>='),
             ('MENOR_IGUAL',   r'<='),
+            ('POTENCIA',      r'\*\*'),      # Antes de '*'
+
+            # Operadores Simples
+            ('ATRIBUICAO',    r'='),
             ('MAIOR',         r'>'),
             ('MENOR',         r'<'),
             ('SOMA',          r'\+'),
             ('SUB',           r'-'),
             ('MULT',          r'\*'),
             ('DIV',           r'/'),
-            ('LPAREN',        r'\('),
-            ('RPAREN',        r'\)'),
-            ('COMENTARIO',    r'\$.*'),      # Comentário começando com $
+
+            # Identificadores e Números
+            ('ID',            r'[a-zA-Z_][a-zA-Z0-9_]*'),
+            ('NUMERO',        r'\d+(\.\d+)?'),
+
+            # Ignorar
+            ('COMENTARIO',    r'\$.*'),
             ('ESPACO',        r'[ \t\r\n]+'),
             ('ERRO',          r'.'),
         ]
@@ -43,12 +59,10 @@ class Lexico:
             tipo = mo.lastgroup
             valor = mo.group()
 
-            if tipo == 'ESPACO':
-                continue
-            elif tipo == 'COMENTARIO':
+            if tipo in ('ESPACO', 'COMENTARIO'):
                 continue
             elif tipo == 'ERRO':
-                self.erros.append(f"Erro Léxico: Caractere inesperado '{valor}' na posição {mo.start()}")
+                self.erros.append(f"Erro Léxico: Caractere '{valor}' na posição {mo.start()}")
             else:
                 self.tokens.append((tipo, valor))
         
@@ -58,6 +72,6 @@ class Lexico:
         print("-" * 30)
         print("LISTA DE TOKENS:")
         print("-" * 30)
-        for token in self.tokens:
-            print(f"[{token[0]:<15}] : {token[1]}")
+        for t in self.tokens:
+            print(f"[{t[0]:<15}] : {t[1]}")
         print("-" * 30)

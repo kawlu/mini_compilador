@@ -1,6 +1,4 @@
-# parser_ast.py
-
-# --- Classes de Nó (AST) ---
+# --- Nós da Árvore ---
 class Node: pass
 
 class BlockNode(Node):
@@ -13,7 +11,21 @@ class IfNode(Node):
         self.condition = condition
         self.true_block = true_block
         self.false_block = false_block
-        self.nome = "if"
+        self.nome = "Se"
+
+class WhileNode(Node):
+    def __init__(self, condition, block):
+        self.condition = condition
+        self.block = block
+        self.nome = "Enquanto"
+
+class ForNode(Node):
+    def __init__(self, init, condition, increment, block):
+        self.init = init
+        self.condition = condition
+        self.increment = increment
+        self.block = block
+        self.nome = "Para"
 
 class BinOpNode(Node):
     def __init__(self, left, op, right):
@@ -51,34 +63,39 @@ class ParserAST:
             self.proximo_token()
             return False
 
-    # --- Hierarquia de Expressões (Precedência) ---
+    # --- Precedência Matemática ---
     
-    def fator(self): # Nível mais baixo: Números, IDs, Parênteses
+    def fator(self): # ( ) ID NUM
         token = self.token_atual
         if not token: return None
-        
         if token[0] == 'NUMERO':
-            self.consumir('NUMERO')
-            return NumeroNode(token)
+            self.consumir('NUMERO'); return NumeroNode(token)
         elif token[0] == 'ID':
-            self.consumir('ID')
-            return IdNode(token)
+            self.consumir('ID'); return IdNode(token)
         elif token[0] == 'LPAREN':
             self.consumir('LPAREN')
-            node = self.expressao_logica() # Volta para o topo da hierarquia
+            node = self.expressao_logica()
             self.consumir('RPAREN')
             return node
         return None
 
-    def termo(self): # Multiplicação e Divisão
+    def expressao_potencia(self): # **
         node = self.fator()
-        while self.token_atual and self.token_atual[0] in ('MULT', 'DIV'):
+        while self.token_atual and self.token_atual[0] == 'POTENCIA':
             op = self.token_atual
-            self.consumir(op[0])
+            self.consumir('POTENCIA')
             node = BinOpNode(node, op, self.fator())
         return node
 
-    def expressao_aritmetica(self): # Soma e Subtração
+    def termo(self): # * /
+        node = self.expressao_potencia()
+        while self.token_atual and self.token_atual[0] in ('MULT', 'DIV'):
+            op = self.token_atual
+            self.consumir(op[0])
+            node = BinOpNode(node, op, self.expressao_potencia())
+        return node
+
+    def expressao_aritmetica(self): # + -
         node = self.termo()
         while self.token_atual and self.token_atual[0] in ('SOMA', 'SUB'):
             op = self.token_atual
@@ -86,7 +103,7 @@ class ParserAST:
             node = BinOpNode(node, op, self.termo())
         return node
 
-    def expressao_comparacao(self): # Maior, Menor, Igual
+    def expressao_comparacao(self): # > < ==
         node = self.expressao_aritmetica()
         while self.token_atual and self.token_atual[0] in ('MAIOR', 'MENOR', 'IGUAL', 'MAIOR_IGUAL', 'MENOR_IGUAL'):
             op = self.token_atual
@@ -94,89 +111,83 @@ class ParserAST:
             node = BinOpNode(node, op, self.expressao_aritmetica())
         return node
 
-    def expressao_logica(self): # AND (Topo da hierarquia de expressões)
+    def expressao_logica(self): # E OU
         node = self.expressao_comparacao()
-        while self.token_atual and self.token_atual[0] == 'AND':
+        while self.token_atual and self.token_atual[0] in ('E', 'OU'):
             op = self.token_atual
-            self.consumir('AND')
+            self.consumir(op[0])
             node = BinOpNode(node, op, self.expressao_comparacao())
         return node
 
-    # --- Comandos e Blocos ---
+    # --- Comandos ---
 
     def bloco(self):
-        """ Lê { comando; comando; } """
         if not self.consumir('LBRACE'): return None
         comandos = []
         while self.token_atual and self.token_atual[0] != 'RBRACE':
             cmd = self.declaracao()
-            if cmd: commands.append(cmd)
-            # Proteção contra loop infinito dentro do bloco
-            if not cmd and self.token_atual[0] != 'RBRACE':
-                 self.proximo_token() 
-        
+            if cmd: comandos.append(cmd)
+            if not cmd and self.token_atual[0] != 'RBRACE': self.proximo_token()
         self.consumir('RBRACE')
         return BlockNode(comandos)
 
-    def declaracao_if(self):
-        self.consumir('IF')
-        condicao = self.expressao_logica() # Lê a condição (ex: x > 10 and y < 5)
-        
-        # Lê o bloco do 'then'
+    def declaracao_se(self):
+        self.consumir('SE')
+        condicao = self.expressao_logica()
+        self.consumir('ENTAO')
         bloco_true = self.bloco()
-        
         bloco_false = None
-        if self.token_atual and self.token_atual[0] == 'ELSE':
-            self.consumir('ELSE')
+        if self.token_atual and self.token_atual[0] == 'SENAO':
+            self.consumir('SENAO')
             bloco_false = self.bloco()
-            
         return IfNode(condicao, bloco_true, bloco_false)
 
-    def declaracao_atribuicao(self):
+    def declaracao_enquanto(self):
+        self.consumir('ENQUANTO')
+        condicao = self.expressao_logica()
+        bloco = self.bloco()
+        return WhileNode(condicao, bloco)
+
+    def declaracao_para(self):
+        self.consumir('PARA')
+        self.consumir('LPAREN')
+        init = self.declaracao_atribuicao(consome_fim=True)
+        cond = self.expressao_logica()
+        self.consumir('FIM')
+        inc = self.declaracao_atribuicao(consome_fim=False)
+        self.consumir('RPAREN')
+        bloco = self.bloco()
+        return ForNode(init, cond, inc, bloco)
+
+    def declaracao_atribuicao(self, consome_fim=True):
+        if self.token_atual[0] != 'ID': return None
         var_node = IdNode(self.token_atual)
         self.consumir('ID')
+        if not self.token_atual or self.token_atual[0] != 'ATRIBUICAO': return None
         op = self.token_atual
         self.consumir('ATRIBUICAO')
         expr = self.expressao_logica()
-        self.consumir('FIM')
+        if consome_fim: self.consumir('FIM')
         return BinOpNode(var_node, op, expr)
 
     def declaracao(self):
-        """ Decide qual comando executar """
         if not self.token_atual: return None
-        
-        if self.token_atual[0] == 'IF':
-            return self.declaracao_if()
-        elif self.token_atual[0] == 'ID':
-            return self.declaracao_atribuicao()
-        else:
-            # Token perdido ou erro
-            return None
+        t = self.token_atual[0]
+        if t == 'SE': return self.declaracao_se()
+        elif t == 'ENQUANTO': return self.declaracao_enquanto()
+        elif t == 'PARA': return self.declaracao_para()
+        elif t == 'ID': return self.declaracao_atribuicao()
+        return None
 
     def analisar(self):
-        # Agora analisamos uma LISTA de comandos (um programa inteiro)
         comandos = []
         self.erros = []
-        
         while self.token_atual:
-            start_pos = self.pos
             try:
                 cmd = self.declaracao()
-                if cmd:
-                    comandos.append(cmd)
-                else:
-                     if self.token_atual:
-                        val = self.token_atual[1]
-                        # Evita spam de erros
-                        if not self.erros or "Token inesperado" not in self.erros[-1]:
-                             self.erros.append(f"Erro: Token inesperado '{val}'.")
-                        self.proximo_token()
+                if cmd: comandos.append(cmd)
+                else: 
+                    if self.token_atual: self.proximo_token()
             except Exception as e:
-                self.erros.append(f"Erro Fatal: {str(e)}")
-                break
-            
-            if self.pos == start_pos and self.token_atual:
-                self.proximo_token()
-
-        # Retorna tudo dentro de um nó "Programa" para facilitar o desenho
+                self.erros.append(str(e)); break
         return [BlockNode(comandos)], self.erros
