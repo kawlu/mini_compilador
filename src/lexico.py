@@ -8,49 +8,34 @@ class Lexico:
         self.linhas = codigo_fonte.split('\n')
 
     def _formatar_erro(self, pos_global: int, char: str):
-        COR = "\033[31m"    # vermelho
+        COR = "\033[31m"
         RESET = "\033[0m"
-
-        # Descobre linha e coluna
         contador = 0
         for num_linha, conteudo in enumerate(self.linhas, start=1):
             if contador + len(conteudo) + 1 > pos_global:
                 coluna = pos_global - contador
                 break
             contador += len(conteudo) + 1
-
         linha_original = self.linhas[num_linha - 1]
-
-        # Pinta o(s) caractere(s) problemático(s)
-        linha_colorida = (
-            linha_original[:coluna] +
-            f"{COR}{char}{RESET}" +
-            linha_original[coluna + len(char):]
-        )
-
+        linha_colorida = (linha_original[:coluna] + f"{COR}{char}{RESET}" + linha_original[coluna + len(char):])
         underline = " " * coluna + f"{COR}^{RESET}"
-
-        return (
-            f"Erro Léxico na linha {num_linha}, coluna {coluna + 1}: caractere inesperado '{char}'\n"
-            f"    {linha_colorida}\n"
-            f"    {underline}"
-        )
-    
+        return (f"Erro Léxico na linha {num_linha}, coluna {coluna + 1}: caractere inesperado '{char}'\n    {linha_colorida}\n    {underline}")
     
     def analisar(self):
         self.tokens = []
         self.erros = []
 
-        # A ordem é CRÍTICA: Palavras maiores e compostas vêm primeiro!
+        # ADICIONADO \b NO FINAL DAS PALAVRAS CHAVE
+        # Isso impede que 'seguro' vire 'se' + 'guro'
         regras_tokens = [
-            # Palavras Reservadas (Comandos)
-            ('SENAO',         r'senao'),     # Antes de 'se'
-            ('ENTAO',         r'entao'),     # Antes de 'e'
-            ('ENQUANTO',      r'enquanto'),  # Antes de 'e'
-            ('PARA',          r'para'),
-            ('SE',            r'se'),
-            ('E',             r'e'),
-            ('OU',            r'ou'),
+            # Palavras Reservadas (Com \b para palavra inteira)
+            ('SENAO',         r'senao\b'),     
+            ('ENTAO',         r'entao\b'),     
+            ('ENQUANTO',      r'enquanto\b'),  
+            ('PARA',          r'para\b'),
+            ('SE',            r'se\b'),
+            ('E',             r'e\b'),
+            ('OU',            r'ou\b'),
 
             # Símbolos Estruturais
             ('FIM',           r';'),
@@ -58,12 +43,17 @@ class Lexico:
             ('RBRACE',        r'\}'),
             ('LPAREN',        r'\('),
             ('RPAREN',        r'\)'),
+            
+            # Arrays
+            ('LBRACKET',      r'\['),
+            ('RBRACKET',      r'\]'),
 
             # Operadores Compostos
             ('IGUAL',         r'=='),
+            ('DIFERENTE',     r'!='),
             ('MAIOR_IGUAL',   r'>='),
             ('MENOR_IGUAL',   r'<='),
-            ('POTENCIA',      r'\*\*'),      # Antes de '*'
+            ('POTENCIA',      r'\*\*'),
 
             # Operadores Simples
             ('ATRIBUICAO',    r'='),

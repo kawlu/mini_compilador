@@ -1,0 +1,15 @@
+$ Cria um vetor de tamanho 10 (indices 0 a 9)
+fib = [10];
+
+$ Casos base
+fib[0] = 0;
+fib[1] = 1;
+
+$ Gera a sequencia
+para (i = 2; i < 10; i = i + 1) {
+    $ Soma os dois anteriores
+    fib[i] = fib[i-1] + fib[i-2];
+}
+
+$ O ultimo valor (fib[9]) deve ser 34
+resultado = fib[9];

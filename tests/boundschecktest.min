@@ -1,0 +1,9 @@
+lista = [3]; $ Indices validos: 0, 1, 2
+
+lista[0] = 10;
+lista[1] = 20;
+lista[2] = 30;
+
+$ Tenta acessar o indice 5 (que nao existe)
+$ Isso DEVE gerar um erro na saida
+erro_proposital = lista[5];

@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body class="min-h-screen">
 
@@ -18,10 +19,8 @@
                     <i data-lucide="code-2" class="w-8 h-8" style="color: #000000;"></i>
                     <h1 class="text-3xl font-bold">Compilador</h1>
                 </div>
-
                 <p class="text-sm" style="color: #6b7280;">Análise e execução de código</p>
             </div>
-
             <button id="alternarTemaBtn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                 <i id="iconeTema" data-lucide="moon" class="w-6 h-6"></i>
             </button>
@@ -39,7 +38,6 @@
             <div class="lg:col-span-1">
                 <div class="cartao h-full flex flex-col p-6">
                     <h2 class="text-lg font-semibold mb-1">Editor</h2>
-
                     <p class="text-sm mb-4" style="color: #6b7280;">Cole ou carregue seu código</p>
 
                     <textarea id="areaCodigo" class="area-codigo flex-1 min-h-[300px]" 
@@ -51,12 +49,10 @@
                     <div class="space-y-2 pt-4 mt-4 border-t" style="border-color: #d1d5db;">
 
                         <button onclick="acionarLeituraBotao()" id="btnLerArquivo" 
-                            class="w-full text-sm font-medium py-2 px-4 rounded-lg border 
-                            hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                            class="w-full text-sm font-medium py-2 px-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                             style="border-color: #d1d5db; background-color: #ffffff; color: #111827;">
                             <div class="flex items-center justify-center">
-                                <i data-lucide="upload" class="w-4 h-4 mr-2"></i>
-                                Ler Arquivo
+                                <i data-lucide="upload" class="w-4 h-4 mr-2"></i> Ler Arquivo
                             </div>
                         </button>
 
@@ -81,51 +77,44 @@
 
             <div class="lg:col-span-2 painel-saida">
                 <div class="cartao h-full flex flex-col p-6">
-                
                     <div class="flex items-start justify-between mb-1">
                         <div>
                             <h2 class="text-lg font-semibold">Saída</h2>
-
                             <p class="text-sm" style="color: #6b7280;">Resultados da compilação e análise</p>
                         </div>
                         
-                        <button onclick="limparSaida()" id="btnLimparSaida" 
-                                class="btn-limpar text-sm font-medium py-1 px-3 rounded-lg transition" 
-                                title="Limpar todos os resultados">
-                            <div class="flex items-center justify-center">
-                                Limpar
-                            </div>
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="alternarVisualizacaoAST()" id="btnAlternarAST" 
+                                    class="hidden text-sm font-medium py-1 px-3 rounded-lg transition border hover:bg-gray-50 dark:hover:bg-gray-800" 
+                                    style="border-color: #d1d5db; color: #111827;">
+                                <div class="flex items-center justify-center gap-2">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                                    <span id="textoToggleAST">Ver Texto</span>
+                                </div>
+                            </button>
+
+                            <button onclick="limparSaida()" id="btnLimparSaida" class="btn-limpar text-sm font-medium py-1 px-3 rounded-lg transition" title="Limpar">
+                                <div class="flex items-center justify-center">Limpar</div>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex border-b mt-3 mb-4" style="border-color: #d1d5db;">
-                        <button data-aba="saida" onclick="selecionarAba('saida')" 
-                            class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 
-                            hover:text-gray-900 dark:hover:text-gray-100 transition aba-ativa">Saída</button>
-
-                        <button data-aba="ast" onclick="selecionarAba('ast')" 
-                            class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 
-                            hover:text-gray-900 dark:hover:text-gray-100 transition">AST</button>
-
-                        <button data-aba="simbolos" onclick="selecionarAba('simbolos')" 
-                            class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 
-                            hover:text-gray-900 dark:hover:text-gray-100 transition">Símbolos</button>
-
-                        <button data-aba="python" onclick="selecionarAba('python')" 
-                            class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 
-                            hover:text-gray-900 dark:hover:text-gray-100 transition">Python</button>
+                        <button data-aba="saida" onclick="selecionarAba('saida')" class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition aba-ativa">Saída</button>
+                        <button data-aba="ast" onclick="selecionarAba('ast')" class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition">AST</button>
+                        <button data-aba="simbolos" onclick="selecionarAba('simbolos')" class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition">Símbolos</button>
+                        <button data-aba="python" onclick="selecionarAba('python')" class="aba-botao py-2 px-4 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition">Python</button>
                     </div>
 
-                    <div id="saidaConteudo" class="area-codigo flex-1 overflow-auto" style="white-space: pre-wrap;">
-                        Execute uma ação para ver os resultados
-                    </div>
+                    <pre id="saidaConteudo" class="area-codigo flex-1 overflow-auto" style="white-space: pre-wrap;">Execute uma ação para ver os resultados</pre>
+                    
+                    <div id="areaGrafica" class="area-codigo flex-1 overflow-hidden hidden" style="cursor: move; display: none;"></div>
 
                 </div>
             </div>
 
         </div>
     </div>
-
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
