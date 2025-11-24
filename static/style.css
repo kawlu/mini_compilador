@@ -73,10 +73,6 @@ body {
     border-color: #b91c1c;
 }
 
-.painel-saida {
-    padding-top: 1.5rem;
-}
-
 @media (max-width: 1023px) {
     .painel-saida {
         padding-top: 1.5rem;
