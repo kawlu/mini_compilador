@@ -1,32 +1,28 @@
-// --- Variáveis Globais ---
 let codigoEntrada = "";
 let carregando = false;
 let abaSelecionada = 'saida';
 
-// Estado para controlar se mostramos o gráfico ou o texto na aba AST
 let astModoVisual = true; 
 
 let dadosSaida = {
-    ast: null,      // Texto ASCII
-    astJson: null,  // JSON para o gráfico
+    ast: null,
+    astJson: null,
     simbolos: null,
     saida: "Execute uma ação para ver os resultados",
     codigoPython: null
 };
 
-// Cores para o Gráfico (D3.js)
 const COLORS = {
-    op: "#c678dd",    // Roxo
-    pow: "#d19a66",   // Laranja (Potência)
-    number: "#d19a66",// Laranja
-    id: "#61afef",    // Azul
-    if: "#e06c75",    // Vermelho
-    loop: "#e5c07b",  // Amarelo
-    block: "#56b6c2", // Ciano
+    op: "#c678dd",
+    pow: "#d19a66",
+    number: "#d19a66",
+    id: "#61afef",
+    if: "#e06c75",
+    loop: "#e5c07b",
+    block: "#56b6c2",
     default: "#abb2bf"
 };
 
-// --- Elementos do DOM ---
 const htmlElemento = document.documentElement;
 const btnAlternarTema = document.getElementById('alternarTemaBtn');
 const iconeTema = document.getElementById('iconeTema');
@@ -41,10 +37,7 @@ const entradaArquivoElemento = document.getElementById('entradaArquivo');
 const saidaConteudoElemento = document.getElementById('saidaConteudo');
 const areaGraficaElemento = document.getElementById('areaGrafica'); // Área do D3.js
 
-// Botões de ação da sidebar
 const botoesAcao = ['btnAST', 'btnSimbolos', 'btnExecutar', 'btnGerarPython'];
-
-// --- Funções de Tema ---
 
 function inicializarTema() {
     const temaSalvo = localStorage.getItem('tema');
@@ -76,8 +69,6 @@ function alternarTema() {
         lucide.createIcons();
     }
 }
-
-// --- Funções de Alerta e Interface ---
 
 function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
     if (alertaTimeout) {
@@ -135,7 +126,6 @@ function definirCarregando(status) {
     }
 }
 
-// --- Função para Alternar entre Gráfico e Texto ---
 function alternarVisualizacaoAST() {
     if (astModoVisual) {
         astModoVisual = false;
@@ -145,14 +135,11 @@ function alternarVisualizacaoAST() {
     atualizarPainelSaida();
 }
 
-// --- Função Principal de Atualização da UI ---
 function atualizarPainelSaida() {
-    // 1. Resetar visibilidade padrão (mostrar texto, esconder gráfico)
     saidaConteudoElemento.style.display = 'block';
     areaGraficaElemento.style.display = 'none';
-    areaGraficaElemento.innerHTML = ''; // Limpa SVG antigo
+    areaGraficaElemento.innerHTML = '';
 
-    // 2. Controlar o botão de alternar (só aparece na aba AST)
     const btnToggle = document.getElementById('btnAlternarAST');
     if (btnToggle) {
         btnToggle.classList.add('hidden');
@@ -162,7 +149,6 @@ function atualizarPainelSaida() {
 
     switch (abaSelecionada) {
         case 'ast':
-            // Mostra o botão de alternar
             if (btnToggle) {
                 btnToggle.classList.remove('hidden');
                 const spanTexto = document.getElementById('textoToggleAST');
@@ -175,15 +161,12 @@ function atualizarPainelSaida() {
                 }
             }
 
-            // Lógica de Exibição
             if (astModoVisual && dadosSaida.astJson) {
-                // Modo Gráfico: Esconde texto, mostra div gráfica e desenha
                 saidaConteudoElemento.style.display = 'none';
                 areaGraficaElemento.style.display = 'block';
                 desenharArvoreD3(dadosSaida.astJson);
-                return; // Sai da função para não sobrescrever com texto
+                return;
             } else {
-                // Modo Texto ou sem dados
                 conteudo = dadosSaida.ast;
                 if (!conteudo) {
                     conteudo = "Nenhum AST gerado. Execute 'Mostrar AST'.";
@@ -234,14 +217,12 @@ function selecionarAba(novaAba) {
     atualizarPainelSaida();
 }
 
-// --- D3.js: Desenho da Árvore ---
 function desenharArvoreD3(data) {
     if (!data) return;
 
     const width = areaGraficaElemento.clientWidth || 800;
     const height = areaGraficaElemento.clientHeight || 600;
 
-    // Cria o SVG
     const svg = d3.select("#areaGrafica").append("svg")
         .attr("width", "100%")
         .attr("height", "100%")
@@ -256,7 +237,6 @@ function desenharArvoreD3(data) {
     const treeLayout = d3.tree().nodeSize([70, 90]);
     treeLayout(root);
 
-    // Links (Linhas)
     g.selectAll(".link")
         .data(root.links())
         .enter().append("path")
@@ -268,7 +248,6 @@ function desenharArvoreD3(data) {
         .attr("stroke", "#9ca3af")
         .attr("stroke-width", 2);
 
-    // Nodes (Grupos)
     const node = g.selectAll(".node")
         .data(root.descendants())
         .enter().append("g")
@@ -277,7 +256,6 @@ function desenharArvoreD3(data) {
             return "translate(" + d.x + "," + d.y + ")"; 
         });
 
-    // Bolinhas
     node.append("circle")
         .attr("r", 20)
         .attr("fill", function(d) { 
@@ -292,7 +270,6 @@ function desenharArvoreD3(data) {
             d3.select(this).attr("stroke", "#333").attr("stroke-width", 2); 
         });
 
-    // Texto
     node.append("text")
         .attr("dy", 5)
         .attr("text-anchor", "middle")
@@ -307,12 +284,10 @@ function desenharArvoreD3(data) {
         .style("font-size", "10px")
         .style("pointer-events", "none");
         
-    // Tooltip Simples
     node.append("title").text(function(d) { return d.data.name; });
 }
 
-// --- Eventos de Entrada ---
-
+// eventos de entrada
 function observarMudancaCodigo() {
     codigoEntrada = areaCodigoElemento.value;
     definirCarregando(false); 
@@ -344,8 +319,7 @@ async function processarUploadArquivo(evento) {
     }
 }
 
-// --- Comunicação com a API ---
-
+// comunicaçao com API
 async function chamarAPICompilacao(codigo) {
     const url = '/api/compilar';
     
@@ -375,7 +349,6 @@ async function executarCompilacaoGeral() {
     definirCarregando(true);
     definirAlerta(null);
     
-    // Limpa dados anteriores
     dadosSaida = { 
         ast: null, 
         astJson: null, 
@@ -388,13 +361,11 @@ async function executarCompilacaoGeral() {
     try {
         const resultados = await chamarAPICompilacao(codigoEntrada);
         
-        // Mapeia os resultados da API para o frontend
         dadosSaida.ast = resultados.ast;
-        dadosSaida.astJson = resultados.ast_json; // JSON do D3
+        dadosSaida.astJson = resultados.ast_json;
         dadosSaida.simbolos = resultados.tabela_simbolos;
-        dadosSaida.codigoPython = resultados.codigo_python; // Código Python
+        dadosSaida.codigoPython = resultados.codigo_python;
         
-        // Formata lista de erros
         let listaErros = "";
         if (resultados.erros_lexicos.length > 0) {
             listaErros += resultados.erros_lexicos.map(function(e) { return "[LEXICO]: " + e; }).join('\n') + "\n";
@@ -408,7 +379,6 @@ async function executarCompilacaoGeral() {
         
         if (resultados.sucesso) {
             definirAlerta("Compilação concluída com sucesso!", 'sucesso');
-            // Mostra tokens + Tradução Pós-Fixa na aba "Saída"
             dadosSaida.saida = resultados.tokens + "\n\n--- TRADUÇÃO PÓS-FIXA ---\n" + resultados.traducao_posfixa;
         } else {
             definirAlerta("Erros encontrados durante a compilação.", 'erro');
@@ -426,8 +396,6 @@ async function executarCompilacaoGeral() {
     }
 }
 
-// --- Ações dos Botões ---
-
 function limparSaida() {
     dadosSaida = {
         ast: null,
@@ -437,7 +405,6 @@ function limparSaida() {
         codigoPython: null
     };
 
-    // Limpa gráfico manualmente também
     areaGraficaElemento.innerHTML = '';
 
     atualizarPainelSaida();
@@ -451,26 +418,24 @@ function executar() {
     });
 }
 
-function exibirAST() {
-    executarCompilacaoGeral().then(function() {
-        selecionarAba('ast');
-    });
-}
-
-function exibirSimbolos() {
-    executarCompilacaoGeral().then(function() {
-        selecionarAba('simbolos');
-    });
-}
-
-function gerarPython() {
-    executarCompilacaoGeral().then(function() {
-        selecionarAba('python');
-    });
-}
-
-// --- Inicialização ---
-
+//function exibirAST() {
+//    executarCompilacaoGeral().then(function() {
+//        selecionarAba('ast');
+//    });
+//}
+//
+//function exibirSimbolos() {
+//    executarCompilacaoGeral().then(function() {
+//        selecionarAba('simbolos');
+//    });
+//}
+//
+//function gerarPython() {
+//    executarCompilacaoGeral().then(function() {
+//        selecionarAba('python');
+//    });
+//}
+//
 btnAlternarTema.addEventListener('click', alternarTema);
 areaCodigoElemento.addEventListener('input', observarMudancaCodigo);
 
