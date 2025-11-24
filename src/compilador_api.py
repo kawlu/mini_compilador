@@ -4,7 +4,7 @@ import io
 from .lexico import Lexico
 from .parser_ast import ParserAST, BinOpNode, BlockNode, IfNode, WhileNode, ForNode, IdNode, NumeroNode
 from .semantico import Semantico, TabelaSimbolos
-from .tradutor import Tradutor, TradutorPython # Importe o TradutorPython
+from .tradutor import Tradutor, Gerador # Importe o TradutorPython
 
 def ast_para_string(node, nivel=0):
     if not node: return ""
@@ -98,7 +98,7 @@ def compilar_para_web(codigo_fonte: str):
 
     # Tradução Python (ADIÇÃO CIRÚRGICA)
     try:
-        py_trad = TradutorPython()
+        py_trad = Gerador()
         resultados['codigo_python'] = py_trad.traduzir(arvores_raiz[0])
     except Exception as e:
         resultados['codigo_python'] = f"# Erro ao gerar Python: {str(e)}"

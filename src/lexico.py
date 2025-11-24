@@ -8,8 +8,6 @@ class Lexico:
         self.linhas = codigo_fonte.split('\n')
 
     def _formatar_erro(self, pos_global: int, char: str):
-        COR = "\033[31m"
-        RESET = "\033[0m"
         contador = 0
         for num_linha, conteudo in enumerate(self.linhas, start=1):
             if contador + len(conteudo) + 1 > pos_global:
@@ -17,8 +15,8 @@ class Lexico:
                 break
             contador += len(conteudo) + 1
         linha_original = self.linhas[num_linha - 1]
-        linha_colorida = (linha_original[:coluna] + f"{COR}{char}{RESET}" + linha_original[coluna + len(char):])
-        underline = " " * coluna + f"{COR}^{RESET}"
+        linha_colorida = (linha_original[:coluna] + f"{char}" + linha_original[coluna + len(char):])
+        underline = " " * coluna + f"^"
         return (f"Erro Léxico na linha {num_linha}, coluna {coluna + 1}: caractere inesperado '{char}'\n    {linha_colorida}\n    {underline}")
     
     def analisar(self):

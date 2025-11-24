@@ -60,8 +60,8 @@ class Tradutor:
         
         return ""
 
-# --- TRADUTOR PARA PYTHON (Mantido igual, pois já funcionava) ---
-class TradutorPython:
+# --- Gerador de código PYTHON ---
+class Gerador:
     def __init__(self):
         self.indentacao = 0
 
