@@ -1,0 +1,19 @@
+vetor = [5];
+vetor[0] = 80;
+vetor[1] = 10;
+vetor[2] = 50;
+vetor[3] = 20;
+vetor[4] = 5;
+
+$ Algoritmo de Ordenacao (Bubble Sort)
+para (i = 0; i < 5; i = i + 1) {
+    para (j = 0; j < 4; j = j + 1) {
+        
+        $ Se o atual for maior que o proximo, troca
+        se vetor[j] > vetor[j+1] entao {
+            temp = vetor[j];
+            vetor[j] = vetor[j+1];
+            vetor[j+1] = temp;
+        }
+    }
+}

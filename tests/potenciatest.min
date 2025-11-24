@@ -1,0 +1,13 @@
+a = 2;
+b = 3;
+c = 4;
+
+$ Precedencia: Potencia > Multiplicacao > Soma
+$ 2 + 3 * (4 ** 2) -> 2 + 3 * 16 -> 2 + 48 -> 50
+calculo = a + b * c ** 2;
+
+se calculo != 50 entao {
+    status = 0; $ Erro na matematica
+} senao {
+    status = 1; $ Sucesso
+}

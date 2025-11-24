@@ -1,13 +1,32 @@
+// --- Variáveis Globais ---
 let codigoEntrada = "";
 let carregando = false;
 let abaSelecionada = 'saida';
+
+// Estado para controlar se mostramos o gráfico ou o texto na aba AST
+let astModoVisual = true; 
+
 let dadosSaida = {
-    ast: null,
+    ast: null,      // Texto ASCII
+    astJson: null,  // JSON para o gráfico
     simbolos: null,
     saida: "Execute uma ação para ver os resultados",
     codigoPython: null
 };
 
+// Cores para o Gráfico (D3.js)
+const COLORS = {
+    op: "#c678dd",    // Roxo
+    pow: "#d19a66",   // Laranja (Potência)
+    number: "#d19a66",// Laranja
+    id: "#61afef",    // Azul
+    if: "#e06c75",    // Vermelho
+    loop: "#e5c07b",  // Amarelo
+    block: "#56b6c2", // Ciano
+    default: "#abb2bf"
+};
+
+// --- Elementos do DOM ---
 const htmlElemento = document.documentElement;
 const btnAlternarTema = document.getElementById('alternarTemaBtn');
 const iconeTema = document.getElementById('iconeTema');
@@ -20,7 +39,12 @@ let alertaTimeout;
 
 const entradaArquivoElemento = document.getElementById('entradaArquivo');
 const saidaConteudoElemento = document.getElementById('saidaConteudo');
+const areaGraficaElemento = document.getElementById('areaGrafica'); // Área do D3.js
+
+// Botões de ação da sidebar
 const botoesAcao = ['btnAST', 'btnSimbolos', 'btnExecutar', 'btnGerarPython'];
+
+// --- Funções de Tema ---
 
 function inicializarTema() {
     const temaSalvo = localStorage.getItem('tema');
@@ -33,7 +57,9 @@ function inicializarTema() {
         htmlElemento.classList.remove('dark');
         iconeTema.setAttribute('data-lucide', 'moon');
     }
-    lucide.createIcons(); 
+    if (window.lucide) {
+        lucide.createIcons(); 
+    }
 }
 
 function alternarTema() {
@@ -46,8 +72,12 @@ function alternarTema() {
         localStorage.setItem('tema', 'dark');
         iconeTema.setAttribute('data-lucide', 'sun');
     }
-    lucide.createIcons();
+    if (window.lucide) {
+        lucide.createIcons();
+    }
 }
+
+// --- Funções de Alerta e Interface ---
 
 function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
     if (alertaTimeout) {
@@ -68,9 +98,11 @@ function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
         }
         
         alertaGeralElemento.classList.remove('hidden');
-        lucide.createIcons();
+        if (window.lucide) {
+            lucide.createIcons();
+        }
 
-        alertaTimeout = setTimeout(() => {
+        alertaTimeout = setTimeout(function() {
             alertaGeralElemento.classList.add('hidden');
         }, duracao);
     }
@@ -84,49 +116,202 @@ function definirCarregando(status) {
     carregando = status;
     const codigoVazio = !codigoEntrada.trim();
     
-    botoesAcao.forEach(id => {
+    botoesAcao.forEach(function(id) {
         const btn = document.getElementById(id);
         if (btn) {
-            btn.disabled = carregando || codigoVazio;
-            btn.style.opacity = (carregando || codigoVazio) ? 0.6 : 1;
+            if (carregando || codigoVazio) {
+                btn.disabled = true;
+                btn.style.opacity = 0.6;
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = 1;
+            }
         }
     });
 
-    document.getElementById('btnLerArquivo').disabled = carregando;
+    const btnLer = document.getElementById('btnLerArquivo');
+    if (btnLer) {
+        btnLer.disabled = carregando;
+    }
 }
 
+// --- Função para Alternar entre Gráfico e Texto ---
+function alternarVisualizacaoAST() {
+    if (astModoVisual) {
+        astModoVisual = false;
+    } else {
+        astModoVisual = true;
+    }
+    atualizarPainelSaida();
+}
+
+// --- Função Principal de Atualização da UI ---
 function atualizarPainelSaida() {
+    // 1. Resetar visibilidade padrão (mostrar texto, esconder gráfico)
+    saidaConteudoElemento.style.display = 'block';
+    areaGraficaElemento.style.display = 'none';
+    areaGraficaElemento.innerHTML = ''; // Limpa SVG antigo
+
+    // 2. Controlar o botão de alternar (só aparece na aba AST)
+    const btnToggle = document.getElementById('btnAlternarAST');
+    if (btnToggle) {
+        btnToggle.classList.add('hidden');
+    }
+
     let conteudo;
+
     switch (abaSelecionada) {
         case 'ast':
-            conteudo = dadosSaida.ast || "Nenhum AST gerado. Execute 'Mostrar AST'.";
+            // Mostra o botão de alternar
+            if (btnToggle) {
+                btnToggle.classList.remove('hidden');
+                const spanTexto = document.getElementById('textoToggleAST');
+                if (spanTexto) {
+                    if (astModoVisual) {
+                        spanTexto.textContent = "Ver Texto";
+                    } else {
+                        spanTexto.textContent = "Ver Gráfico";
+                    }
+                }
+            }
+
+            // Lógica de Exibição
+            if (astModoVisual && dadosSaida.astJson) {
+                // Modo Gráfico: Esconde texto, mostra div gráfica e desenha
+                saidaConteudoElemento.style.display = 'none';
+                areaGraficaElemento.style.display = 'block';
+                desenharArvoreD3(dadosSaida.astJson);
+                return; // Sai da função para não sobrescrever com texto
+            } else {
+                // Modo Texto ou sem dados
+                conteudo = dadosSaida.ast;
+                if (!conteudo) {
+                    conteudo = "Nenhum AST gerado. Execute 'Mostrar AST'.";
+                }
+            }
             break;
+
         case 'simbolos':
-            conteudo = dadosSaida.simbolos || "Nenhuma tabela de símbolos gerada. Execute 'Mostrar Símbolos'.";
+            conteudo = dadosSaida.simbolos;
+            if (!conteudo) {
+                conteudo = "Nenhuma tabela de símbolos gerada. Execute 'Mostrar Símbolos'.";
+            }
             break;
+
         case 'python':
-            conteudo = dadosSaida.codigoPython || "Nenhum código Python gerado. Execute 'Gerar Python'.";
+            conteudo = dadosSaida.codigoPython;
+            if (!conteudo) {
+                conteudo = "Nenhum código Python gerado. Execute 'Gerar Python'.";
+            }
             break;
+
         case 'saida':
         default:
-            conteudo = dadosSaida.saida || "Execute uma ação para ver os resultados";
+            conteudo = dadosSaida.saida;
+            if (!conteudo) {
+                conteudo = "Execute uma ação para ver os resultados";
+            }
             break;
     }
+
     saidaConteudoElemento.textContent = conteudo;
 }
 
 function selecionarAba(novaAba) {
     abaSelecionada = novaAba;
 
-    document.querySelectorAll('.aba-botao').forEach(btn => {
+    const botoes = document.querySelectorAll('.aba-botao');
+    
+    for (let i = 0; i < botoes.length; i++) {
+        const btn = botoes[i];
         btn.classList.remove('aba-ativa');
+        
         if (btn.getAttribute('data-aba') === novaAba) {
             btn.classList.add('aba-ativa');
         }
-    });
+    }
 
     atualizarPainelSaida();
 }
+
+// --- D3.js: Desenho da Árvore ---
+function desenharArvoreD3(data) {
+    if (!data) return;
+
+    const width = areaGraficaElemento.clientWidth || 800;
+    const height = areaGraficaElemento.clientHeight || 600;
+
+    // Cria o SVG
+    const svg = d3.select("#areaGrafica").append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .call(d3.zoom().scaleExtent([0.1, 3]).on("zoom", function(event) {
+            g.attr("transform", event.transform);
+        }));
+
+    const g = svg.append("g")
+        .attr("transform", "translate(" + (width / 2) + ", 50)");
+
+    const root = d3.hierarchy(data);
+    const treeLayout = d3.tree().nodeSize([70, 90]);
+    treeLayout(root);
+
+    // Links (Linhas)
+    g.selectAll(".link")
+        .data(root.links())
+        .enter().append("path")
+        .attr("class", "link")
+        .attr("d", d3.linkVertical()
+            .x(function(d) { return d.x; })
+            .y(function(d) { return d.y; }))
+        .attr("fill", "none")
+        .attr("stroke", "#9ca3af")
+        .attr("stroke-width", 2);
+
+    // Nodes (Grupos)
+    const node = g.selectAll(".node")
+        .data(root.descendants())
+        .enter().append("g")
+        .attr("class", "node")
+        .attr("transform", function(d) { 
+            return "translate(" + d.x + "," + d.y + ")"; 
+        });
+
+    // Bolinhas
+    node.append("circle")
+        .attr("r", 20)
+        .attr("fill", function(d) { 
+            return COLORS[d.data.type] || COLORS.default; 
+        })
+        .attr("stroke", "#333")
+        .attr("stroke-width", 2)
+        .on("mouseover", function() { 
+            d3.select(this).attr("stroke", "#fff").attr("stroke-width", 3); 
+        })
+        .on("mouseout", function() { 
+            d3.select(this).attr("stroke", "#333").attr("stroke-width", 2); 
+        });
+
+    // Texto
+    node.append("text")
+        .attr("dy", 5)
+        .attr("text-anchor", "middle")
+        .text(function(d) { 
+            if (d.data.name.length > 7) {
+                return d.data.name.substring(0, 5) + "..";
+            }
+            return d.data.name;
+        })
+        .style("fill", "white")
+        .style("font-family", "monospace")
+        .style("font-size", "10px")
+        .style("pointer-events", "none");
+        
+    // Tooltip Simples
+    node.append("title").text(function(d) { return d.data.name; });
+}
+
+// --- Eventos de Entrada ---
 
 function observarMudancaCodigo() {
     codigoEntrada = areaCodigoElemento.value;
@@ -140,7 +325,7 @@ function acionarLeituraBotao() {
 }
 
 async function processarUploadArquivo(evento) {
-    const arquivo = evento.target.files?.[0];
+    const arquivo = evento.target.files ? evento.target.files[0] : null;
     if (!arquivo) return;
 
     definirAlerta(null);
@@ -150,7 +335,7 @@ async function processarUploadArquivo(evento) {
         const conteudo = await arquivo.text();
         areaCodigoElemento.value = conteudo;
         observarMudancaCodigo();
-        definirAlerta(`Arquivo '${arquivo.name}' carregado com sucesso.`, 'sucesso');
+        definirAlerta("Arquivo '" + arquivo.name + "' carregado com sucesso.", 'sucesso');
     } catch (err) {
         definirErro("Erro ao ler arquivo: " + (err.message || "Desconhecido"));
     } finally {
@@ -158,6 +343,8 @@ async function processarUploadArquivo(evento) {
         definirCarregando(false);
     }
 }
+
+// --- Comunicação com a API ---
 
 async function chamarAPICompilacao(codigo) {
     const url = '/api/compilar';
@@ -175,7 +362,7 @@ async function chamarAPICompilacao(codigo) {
     if (resposta.ok) {
         return dados; 
     } else {
-        throw new Error(dados.erro_geral || `Erro HTTP ${resposta.status}: Falha no servidor.`);
+        throw new Error(dados.erro_geral || "Erro HTTP " + resposta.status + ": Falha no servidor.");
     }
 }
 
@@ -187,34 +374,51 @@ async function executarCompilacaoGeral() {
 
     definirCarregando(true);
     definirAlerta(null);
-    dadosSaida = { ast: null, simbolos: null, saida: "Iniciando compilação (aguarde)...", codigoPython: null };
+    
+    // Limpa dados anteriores
+    dadosSaida = { 
+        ast: null, 
+        astJson: null, 
+        simbolos: null, 
+        saida: "Iniciando compilação (aguarde)...", 
+        codigoPython: null 
+    };
     atualizarPainelSaida();
 
     try {
         const resultados = await chamarAPICompilacao(codigoEntrada);
         
+        // Mapeia os resultados da API para o frontend
         dadosSaida.ast = resultados.ast;
+        dadosSaida.astJson = resultados.ast_json; // JSON do D3
         dadosSaida.simbolos = resultados.tabela_simbolos;
-        dadosSaida.codigoPython = resultados.traducao_posfixa;
+        dadosSaida.codigoPython = resultados.codigo_python; // Código Python
         
-        const todosErros = [
-            ...resultados.erros_lexicos.map(e => `[LEXICO]: ${e}`),
-            ...resultados.erros_sintaticos.map(e => `[SINTATICO]: ${e}`),
-            ...resultados.erros_semanticos.map(e => `[SEMANTICO]: ${e}`)
-        ].join('\n');
+        // Formata lista de erros
+        let listaErros = "";
+        if (resultados.erros_lexicos.length > 0) {
+            listaErros += resultados.erros_lexicos.map(function(e) { return "[LEXICO]: " + e; }).join('\n') + "\n";
+        }
+        if (resultados.erros_sintaticos.length > 0) {
+            listaErros += resultados.erros_sintaticos.map(function(e) { return "[SINTATICO]: " + e; }).join('\n') + "\n";
+        }
+        if (resultados.erros_semanticos.length > 0) {
+            listaErros += resultados.erros_semanticos.map(function(e) { return "[SEMANTICO]: " + e; }).join('\n');
+        }
         
         if (resultados.sucesso) {
             definirAlerta("Compilação concluída com sucesso!", 'sucesso');
-            dadosSaida.saida = resultados.tokens + "\n" + resultados.traducao_posfixa;
+            // Mostra tokens + Tradução Pós-Fixa na aba "Saída"
+            dadosSaida.saida = resultados.tokens + "\n\n--- TRADUÇÃO PÓS-FIXA ---\n" + resultados.traducao_posfixa;
         } else {
             definirAlerta("Erros encontrados durante a compilação.", 'erro');
-            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS FINAIS ---\n" + todosErros;
+            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS FINAIS ---\n" + listaErros;
         }
 
     } catch (erro) {
         console.error("Falha na comunicação ou erro inesperado:", erro);
-        definirErro(`Falha na comunicação: ${erro.message}`);
-        dadosSaida.saida = `FALHA DE COMUNICAÇÃO/SERVIDOR:\n${erro.message}`;
+        definirErro("Falha na comunicação: " + erro.message);
+        dadosSaida.saida = "FALHA DE COMUNICAÇÃO/SERVIDOR:\n" + erro.message;
 
     } finally {
         atualizarPainelSaida();
@@ -222,13 +426,19 @@ async function executarCompilacaoGeral() {
     }
 }
 
+// --- Ações dos Botões ---
+
 function limparSaida() {
     dadosSaida = {
         ast: null,
+        astJson: null,
         simbolos: null,
         saida: "Saída limpa. Execute uma nova compilação.",
         codigoPython: null
     };
+
+    // Limpa gráfico manualmente também
+    areaGraficaElemento.innerHTML = '';
 
     atualizarPainelSaida();
     selecionarAba('saida');
@@ -236,20 +446,30 @@ function limparSaida() {
 }
 
 function executar() {
-    executarCompilacaoGeral().then(() => selecionarAba('saida'));
+    executarCompilacaoGeral().then(function() {
+        selecionarAba('saida');
+    });
 }
 
 function exibirAST() {
-    executarCompilacaoGeral().then(() => selecionarAba('ast'));
+    executarCompilacaoGeral().then(function() {
+        selecionarAba('ast');
+    });
 }
 
 function exibirSimbolos() {
-    executarCompilacaoGeral().then(() => selecionarAba('simbolos'));
+    executarCompilacaoGeral().then(function() {
+        selecionarAba('simbolos');
+    });
 }
 
 function gerarPython() {
-    executarCompilacaoGeral().then(() => selecionarAba('python'));
+    executarCompilacaoGeral().then(function() {
+        selecionarAba('python');
+    });
 }
+
+// --- Inicialização ---
 
 btnAlternarTema.addEventListener('click', alternarTema);
 areaCodigoElemento.addEventListener('input', observarMudancaCodigo);
