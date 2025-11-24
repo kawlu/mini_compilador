@@ -1,0 +1,101 @@
+(* Gramática EBNF para Mini Compilador
+   Autores: Victor Vianna de Souza, Lucas de Santana dos Reis, Deborah de Oliveira Goulart, 
+   Yasmin Cibreiros Chagas da Silva.
+*)
+
+(* --- ESTRUTURA DO PROGRAMA --- *)
+
+programa        ::= { declaracao } ;
+
+bloco           ::= "{" { declaracao } "}" ;
+
+declaracao      ::= declaracao_se
+                  | declaracao_enquanto
+                  | declaracao_para
+                  | declaracao_atribuicao ;
+
+(* --- ESTRUTURAS DE CONTROLE --- *)
+
+declaracao_se   ::= "se" expressao "entao" bloco [ "senao" bloco ] ;
+
+declaracao_enquanto ::= "enquanto" expressao bloco ;
+
+(* O 'para' aceita atribuições internas nos seus componentes *)
+declaracao_para ::= "para" "(" atribuicao_interna ";" expressao ";" atribuicao_interna ")" bloco ;
+
+(* --- ATRIBUIÇÃO --- *)
+
+(* Atribuição como instrução (termina com ;) *)
+declaracao_atribuicao ::= atribuicao_interna ";" ;
+
+(* Atribuição como expressão (sem ;) *)
+atribuicao_interna    ::= lvalue "=" expressao ;
+
+(* lvalue: O que pode estar à esquerda de uma atribuição (Var ou Array[idx]) *)
+lvalue                ::= ID [ "[" expressao "]" ] ;
+
+(* --- EXPRESSÕES (Hierarquia de Precedência) --- *)
+
+(* 1. Lógica (Menor precedência) *)
+expressao       ::= expressao_logica ;
+
+expressao_logica ::= expressao_comparacao { ("e" | "ou") expressao_comparacao } ;
+
+(* 2. Comparação *)
+expressao_comparacao ::= expressao_aritmetica { operador_relacional expressao_aritmetica } ;
+
+operador_relacional  ::= ">" | "<" | ">=" | "<=" | "==" | "!=" ;
+
+(* 3. Aritmética (Soma/Subtração) *)
+expressao_aritmetica ::= termo { ("+" | "-") termo } ;
+
+(* 4. Termo (Multiplicação/Divisão) *)
+termo           ::= potencia { ("*" | "/") potencia } ;
+
+(* 5. Potência (Maior precedência aritmética) *)
+potencia        ::= fator { "**" fator } ;
+
+(* 6. Fator (Átomos) *)
+fator           ::= NUMERO
+                  | ID [ "[" expressao "]" ]  (* Acesso a variável ou array *)
+                  | "(" expressao ")"         (* Agrupamento *)
+                  | array_literal ;           (* Criação de array: [10] *)
+
+(* Criação de Array: [ tamanho ] *)
+array_literal   ::= "[" expressao "]" ;
+
+(* --- TERMINAIS (TOKENS) --- *)
+(* Definidos via Regex no lexico.py *)
+
+ID              ::= ? [a-zA-Z_][a-zA-Z0-9_]* ? ;
+NUMERO          ::= ? \d+(\.\d+)? ? ;
+
+O analisador sintático (src/parser_ast.py) foi implementado utilizando a 
+técnica de Análise Descendente Recursiva (Recursive Descent Parsing).
+
+Abaixo está a relação direta entre as regras de produção definidas na gramática 
+EBNF (grammar.ebnf) e os métodos implementados na classe ParserAST.
+
+Estrutura Geral
+Regra EBNF (Produção)	Método Python (ParserAST)	Descrição
+programa	               analisar()Ponto de entrada. Lê a lista de declarações.
+bloco                   	bloco()	                Processa { ... } e retorna um BlockNode.
+declaracao	             declaracao()	            "Dispatcher" que decide qual 
+                                                   comando processar (if, while, etc).
+Comandos (Statements)
+Regra EBNF	            Método Python
+declaracao_se	         declaracao_se()
+declaracao_enquanto	   declaracao_enquanto()
+declaracao_para	      declaracao_para()
+declaracao_atribuicao	declaracao_atribuicao()
+
+Expressões e Precedência (Hierarquia)
+As expressões são processadas em cascata para garantir a 
+precedência correta dos operadores (do menor para a maior prioridade).
+Regra EBNF	            Método Python	         Operadores Tratados
+expressao (ou logica)	expressao_logica()	   e, ou (Menor prioridade)
+comparacao	            expressao_comparacao()	>, <, ==, !=, etc.
+aritmetica	            expressao_aritmetica()	+, -
+termo	                  termo()	               *, /
+potencia	               expressao_potencia()	   **
+fator                   fator()                 Parênteses, Números, IDs, Arrays.
