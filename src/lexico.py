@@ -1,35 +1,32 @@
 import re
+from .util import ErrorFormatter
 
 class Lexico:
-    def __init__(self, codigo_fonte: str):
+    def __init__(self, codigo_fonte, formatter=None):
         self.codigo_fonte = codigo_fonte
+        self.linhas = (
+            codigo_fonte.split("\n")
+            if isinstance(codigo_fonte, str)
+            else codigo_fonte
+        )
+
+        # Se o formatter não vier de fora, cria um interno
+        self.formatter = formatter or ErrorFormatter(self.linhas)
+
         self.tokens = []
         self.erros = []
-        self.linhas = codigo_fonte.split('\n')
 
-    def _formatar_erro(self, pos_global: int, char: str):
-        contador = 0
-        for num_linha, conteudo in enumerate(self.linhas, start=1):
-            if contador + len(conteudo) + 1 > pos_global:
-                coluna = pos_global - contador
-                break
-            contador += len(conteudo) + 1
-        linha_original = self.linhas[num_linha - 1]
-        linha_colorida = (linha_original[:coluna] + f"{char}" + linha_original[coluna + len(char):])
-        underline = " " * coluna + f"^"
-        return (f"Erro Léxico na linha {num_linha}, coluna {coluna + 1}: caractere inesperado '{char}'\n    {linha_colorida}\n    {underline}")
-    
     def analisar(self):
         self.tokens = []
         self.erros = []
+        erros_por_linha = {}     # <--- AGRUPADOR REAL
 
         # ADICIONADO \b NO FINAL DAS PALAVRAS CHAVE
         # Isso impede que 'seguro' vire 'se' + 'guro'
         regras_tokens = [
-            # Palavras Reservadas (Com \b para palavra inteira)
-            ('SENAO',         r'senao\b'),     
-            ('ENTAO',         r'entao\b'),     
-            ('ENQUANTO',      r'enquanto\b'),  
+            ('SENAO',         r'senao\b'),
+            ('ENTAO',         r'entao\b'),
+            ('ENQUANTO',      r'enquanto\b'),
             ('PARA',          r'para\b'),
             ('SE',            r'se\b'),
             ('E',             r'e\b'),
@@ -72,20 +69,33 @@ class Lexico:
             ('ERRO',          r'.'),
         ]
 
-        regex = '|'.join('(?P<%s>%s)' % pair for pair in regras_tokens)
+        regex = '|'.join(f"(?P<{nome}>{padrao})" for nome, padrao in regras_tokens)
 
         for mo in re.finditer(regex, self.codigo_fonte):
             tipo = mo.lastgroup
             valor = mo.group()
-            pos_global = mo.start()
-            
+            pos = mo.start()
+
             if tipo in ('ESPACO', 'COMENTARIO'):
                 continue
-            elif tipo == 'ERRO':
-                self.erros.append(self._formatar_erro(pos_global, valor))
+
+            if tipo == 'ERRO':
+                linha, coluna = self.formatter.localizar(pos)
+
+                if linha not in erros_por_linha:
+                    erros_por_linha[linha] = []
+
+                erros_por_linha[linha].append(
+                    (coluna, f"caractere inesperado '{valor}'")
+                )
             else:
                 self.tokens.append((tipo, valor))
-        
+
+        for linha, lista in erros_por_linha.items():
+            self.erros.append(
+                self.formatter.formatar_multiplos(linha, lista)
+            )
+
         return self.tokens, self.erros
 
     def imprimir_tokens(self):

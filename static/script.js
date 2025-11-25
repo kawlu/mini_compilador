@@ -382,7 +382,7 @@ async function executarCompilacaoGeral() {
             dadosSaida.saida = resultados.tokens + "\n\n--- TRADUÇÃO PÓS-FIXA ---\n" + resultados.traducao_posfixa;
         } else {
             definirAlerta("Erros encontrados durante a compilação.", 'erro');
-            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS FINAIS ---\n" + listaErros;
+            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS ---\n" + listaErros;
         }
 
     } catch (erro) {
