@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compilador - Análise e Execução</title>
+    <title>Compilador</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -16,13 +16,13 @@
         <header class="mb-8 flex items-center justify-between">
             <div>
                 <div class="flex items-center gap-2 mb-2">
-                    <i data-lucide="code-2" class="w-8 h-8" style="color: #000000;"></i>
+                    <i data-lucide="code-2" class="w-8 h-8" id="icone"></i>
                     <h1 class="text-3xl font-bold">Compilador</h1>
                 </div>
                 <p class="text-sm" style="color: #6b7280;">Análise e execução de código</p>
             </div>
             <button id="alternarTemaBtn" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                <i id="iconeTema" data-lucide="moon" class="w-6 h-6"></i>
+                <i id="iconeTema" class="w-6 h-6"></i>
             </button>
         </header>
 

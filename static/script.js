@@ -35,13 +35,16 @@ let alertaTimeout;
 
 const entradaArquivoElemento = document.getElementById('entradaArquivo');
 const saidaConteudoElemento = document.getElementById('saidaConteudo');
-const areaGraficaElemento = document.getElementById('areaGrafica'); // Área do D3.js
+const areaGraficaElemento = document.getElementById('areaGrafica');
 
 const botoesAcao = ['btnAST', 'btnSimbolos', 'btnExecutar', 'btnGerarPython'];
 
 function inicializarTema() {
     const temaSalvo = localStorage.getItem('tema');
     const prefereEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // PASSO CRÍTICO: LIMPAR O ÍCONE (caso haja algum ícone estático no HTML)
+    iconeTema.innerHTML = "";
     
     if (temaSalvo === 'dark' || (!temaSalvo && prefereEscuro)) {
         htmlElemento.classList.add('dark');
@@ -50,12 +53,13 @@ function inicializarTema() {
         htmlElemento.classList.remove('dark');
         iconeTema.setAttribute('data-lucide', 'moon');
     }
-    if (window.lucide) {
-        lucide.createIcons(); 
-    }
+    lucide.createIcons(); 
 }
 
 function alternarTema() {
+    // 1. PASSO CRÍTICO: LIMPAR O SVG ANTERIOR
+    iconeTema.innerHTML = ""; 
+
     if (htmlElemento.classList.contains('dark')) {
         htmlElemento.classList.remove('dark');
         localStorage.setItem('tema', 'light');
@@ -65,10 +69,10 @@ function alternarTema() {
         localStorage.setItem('tema', 'dark');
         iconeTema.setAttribute('data-lucide', 'sun');
     }
-    if (window.lucide) {
-        lucide.createIcons();
-    }
+    // 2. Criar o novo ícone (agora o elemento está vazio)
+    lucide.createIcons();
 }
+
 
 function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
     if (alertaTimeout) {

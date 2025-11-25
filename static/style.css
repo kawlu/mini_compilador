@@ -73,6 +73,8 @@ body {
     border-color: #b91c1c;
 }
 
+
+
 @media (max-width: 1023px) {
     .painel-saida {
         padding-top: 1.5rem;
@@ -85,10 +87,10 @@ html.dark body {
     color: #F0F0F0;
 }
 
-html.dark .area-codigo {
-    background-color: #252525;
-    color: #F0F0F0;
-    border: 1px solid #404040;
+
+
+html.dark .textoToggleAST{
+    color: #ffffff;
 }
 
 html.dark .cartao {
@@ -107,6 +109,15 @@ html.dark .alerta-erro {
     color: #FFC0C0;
 }
 
+html.dark #btnAlternarAST {
+    color: #ffffff !important;
+    border-color: #A0A0A0 !important;
+}
+
+html.dark #btnAlternarAST:hover {
+    color: #000000 !important;
+}
+
 html.dark .alerta-sucesso {
     background-color: #064e3b;
     border-color: #10b981;
@@ -116,6 +127,11 @@ html.dark .alerta-sucesso {
 html.dark .btn-primario {
     background-color: #A0A0A0;
     color: #000000 !important;
+}
+
+html.dark .area-codigo {
+    background-color: #000000;
+    color: #ffffff;
 }
 
 html.dark .btn-limpar {

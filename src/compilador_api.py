@@ -4,7 +4,7 @@ import io
 from .lexico import Lexico
 from .parser_ast import ParserAST, BinOpNode, BlockNode, IfNode, WhileNode, ForNode, IdNode, NumeroNode
 from .semantico import Semantico, TabelaSimbolos
-from .tradutor import Tradutor, Gerador # Importe o TradutorPython
+from .tradutor import Tradutor, Gerador
 
 def ast_para_string(node, nivel=0):
     if not node: return ""
