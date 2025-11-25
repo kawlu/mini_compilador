@@ -57,10 +57,10 @@ def ast_para_json(node):
 def compilar_para_web(codigo_fonte: str):
     resultados = {
         'tokens': '', 'erros_lexicos': [],
-        'ast': '', 'ast_json': None, # <--- Campo Novo
+        'ast': '', 'ast_json': None, 
         'erros_sintaticos': [], 'erros_semanticos': [],
         'tabela_simbolos': '',
-        'traducao_posfixa': '', 'codigo_python': '', # <--- Campo Novo
+        'traducao_posfixa': '', 'codigo_python': '',
         'sucesso': False
     }
 
@@ -77,7 +77,7 @@ def compilar_para_web(codigo_fonte: str):
 
     if arvores_raiz and arvores_raiz[0]:
         resultados['ast'] = ast_para_string(arvores_raiz[0])
-        resultados['ast_json'] = ast_para_json(arvores_raiz[0]) # <--- GERA JSON
+        resultados['ast_json'] = ast_para_json(arvores_raiz[0])
 
     if erros_sintaticos: return resultados
 
@@ -94,7 +94,7 @@ def compilar_para_web(codigo_fonte: str):
     with redirect_stdout(f): tradutor.traduzir(arvores_raiz[0])
     resultados['traducao_posfixa'] = f.getvalue()
 
-    # Tradução Python (ADIÇÃO CIRÚRGICA)
+    # Tradução Python
     try:
         py_trad = Gerador()
         resultados['codigo_python'] = py_trad.traduzir(arvores_raiz[0])

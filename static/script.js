@@ -43,7 +43,6 @@ function inicializarTema() {
     const temaSalvo = localStorage.getItem('tema');
     const prefereEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    // PASSO CRÍTICO: LIMPAR O ÍCONE (caso haja algum ícone estático no HTML)
     iconeTema.innerHTML = "";
     
     if (temaSalvo === 'dark' || (!temaSalvo && prefereEscuro)) {
@@ -57,7 +56,6 @@ function inicializarTema() {
 }
 
 function alternarTema() {
-    // 1. PASSO CRÍTICO: LIMPAR O SVG ANTERIOR
     iconeTema.innerHTML = ""; 
 
     if (htmlElemento.classList.contains('dark')) {
@@ -69,7 +67,6 @@ function alternarTema() {
         localStorage.setItem('tema', 'dark');
         iconeTema.setAttribute('data-lucide', 'sun');
     }
-    // 2. Criar o novo ícone (agora o elemento está vazio)
     lucide.createIcons();
 }
 
