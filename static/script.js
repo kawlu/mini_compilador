@@ -2,16 +2,18 @@ let codigoEntrada = "";
 let carregando = false;
 let abaSelecionada = 'saida';
 
+// Variável de estado para alternar entre gráfico e texto
 let astModoVisual = true; 
 
 let dadosSaida = {
     ast: null,
-    astJson: null,
+    astJson: null, // JSON para o gráfico D3
     simbolos: null,
     saida: "Execute uma ação para ver os resultados",
     codigoPython: null
 };
 
+// Cores para o Gráfico D3
 const COLORS = {
     op: "#c678dd",
     pow: "#d19a66",
@@ -35,16 +37,28 @@ let alertaTimeout;
 
 const entradaArquivoElemento = document.getElementById('entradaArquivo');
 const saidaConteudoElemento = document.getElementById('saidaConteudo');
-const areaGraficaElemento = document.getElementById('areaGrafica');
+const areaGraficaElemento = document.getElementById('areaGrafica'); // Área do D3
 
 const botoesAcao = ['btnAST', 'btnSimbolos', 'btnExecutar', 'btnGerarPython'];
+
+// --- NOVA FUNÇÃO CIRÚRGICA: Converte códigos ANSI para HTML ---
+function converterAnsiParaHtml(texto) {
+    if (!texto) return "";
+    // Substitui código de cor Vermelha (\033[31m) por span vermelho
+    let html = texto.replace(/\u001b\[31m/g, '<span style="color: #ef4444; font-weight: bold;">');
+    // Substitui o Reset (\033[0m) pelo fechamento do span
+    html = html.replace(/\u001b\[0m/g, '</span>');
+    return html;
+}
+// --------------------------------------------------------------
 
 function inicializarTema() {
     const temaSalvo = localStorage.getItem('tema');
     const prefereEscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    iconeTema.innerHTML = "";
-    
+    // Limpa ícone anterior
+    if (iconeTema) iconeTema.innerHTML = "";
+
     if (temaSalvo === 'dark' || (!temaSalvo && prefereEscuro)) {
         htmlElemento.classList.add('dark');
         iconeTema.setAttribute('data-lucide', 'sun');
@@ -52,11 +66,11 @@ function inicializarTema() {
         htmlElemento.classList.remove('dark');
         iconeTema.setAttribute('data-lucide', 'moon');
     }
-    lucide.createIcons(); 
+    if (window.lucide) lucide.createIcons(); 
 }
 
 function alternarTema() {
-    iconeTema.innerHTML = ""; 
+    if (iconeTema) iconeTema.innerHTML = "";
 
     if (htmlElemento.classList.contains('dark')) {
         htmlElemento.classList.remove('dark');
@@ -67,9 +81,8 @@ function alternarTema() {
         localStorage.setItem('tema', 'dark');
         iconeTema.setAttribute('data-lucide', 'sun');
     }
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
 }
-
 
 function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
     if (alertaTimeout) {
@@ -90,9 +103,7 @@ function definirAlerta(mensagem, tipo = 'erro', duracao = 5000) {
         }
         
         alertaGeralElemento.classList.remove('hidden');
-        if (window.lucide) {
-            lucide.createIcons();
-        }
+        if (window.lucide) lucide.createIcons();
 
         alertaTimeout = setTimeout(function() {
             alertaGeralElemento.classList.add('hidden');
@@ -137,6 +148,7 @@ function alternarVisualizacaoAST() {
 }
 
 function atualizarPainelSaida() {
+    // Reset visual padrão
     saidaConteudoElemento.style.display = 'block';
     areaGraficaElemento.style.display = 'none';
     areaGraficaElemento.innerHTML = '';
@@ -169,47 +181,39 @@ function atualizarPainelSaida() {
                 return;
             } else {
                 conteudo = dadosSaida.ast;
-                if (!conteudo) {
-                    conteudo = "Nenhum AST gerado. Execute 'Mostrar AST'.";
-                }
+                if (!conteudo) conteudo = "Nenhum AST gerado. Execute 'Mostrar AST'.";
             }
             break;
 
         case 'simbolos':
             conteudo = dadosSaida.simbolos;
-            if (!conteudo) {
-                conteudo = "Nenhuma tabela de símbolos gerada. Execute 'Mostrar Símbolos'.";
-            }
+            if (!conteudo) conteudo = "Nenhuma tabela de símbolos gerada. Execute 'Mostrar Símbolos'.";
             break;
 
         case 'python':
             conteudo = dadosSaida.codigoPython;
-            if (!conteudo) {
-                conteudo = "Nenhum código Python gerado. Execute 'Gerar Python'.";
-            }
+            if (!conteudo) conteudo = "Nenhum código Python gerado. Execute 'Gerar Python'.";
             break;
 
         case 'saida':
         default:
             conteudo = dadosSaida.saida;
-            if (!conteudo) {
-                conteudo = "Execute uma ação para ver os resultados";
-            }
+            if (!conteudo) conteudo = "Execute uma ação para ver os resultados";
             break;
     }
 
-    saidaConteudoElemento.textContent = conteudo;
+    // --- ALTERAÇÃO CIRÚRGICA AQUI ---
+    // Usamos innerHTML + função de conversão para colorir o erro
+    saidaConteudoElemento.innerHTML = converterAnsiParaHtml(conteudo);
 }
 
 function selecionarAba(novaAba) {
     abaSelecionada = novaAba;
 
     const botoes = document.querySelectorAll('.aba-botao');
-    
     for (let i = 0; i < botoes.length; i++) {
         const btn = botoes[i];
         btn.classList.remove('aba-ativa');
-        
         if (btn.getAttribute('data-aba') === novaAba) {
             btn.classList.add('aba-ativa');
         }
@@ -218,6 +222,7 @@ function selecionarAba(novaAba) {
     atualizarPainelSaida();
 }
 
+// --- Função D3.js (Mantida) ---
 function desenharArvoreD3(data) {
     if (!data) return;
 
@@ -259,25 +264,17 @@ function desenharArvoreD3(data) {
 
     node.append("circle")
         .attr("r", 20)
-        .attr("fill", function(d) { 
-            return COLORS[d.data.type] || COLORS.default; 
-        })
+        .attr("fill", function(d) { return COLORS[d.data.type] || COLORS.default; })
         .attr("stroke", "#333")
         .attr("stroke-width", 2)
-        .on("mouseover", function() { 
-            d3.select(this).attr("stroke", "#fff").attr("stroke-width", 3); 
-        })
-        .on("mouseout", function() { 
-            d3.select(this).attr("stroke", "#333").attr("stroke-width", 2); 
-        });
+        .on("mouseover", function() { d3.select(this).attr("stroke", "#fff").attr("stroke-width", 3); })
+        .on("mouseout", function() { d3.select(this).attr("stroke", "#333").attr("stroke-width", 2); });
 
     node.append("text")
         .attr("dy", 5)
         .attr("text-anchor", "middle")
         .text(function(d) { 
-            if (d.data.name.length > 7) {
-                return d.data.name.substring(0, 5) + "..";
-            }
+            if (d.data.name.length > 7) return d.data.name.substring(0, 5) + "..";
             return d.data.name;
         })
         .style("fill", "white")
@@ -288,7 +285,6 @@ function desenharArvoreD3(data) {
     node.append("title").text(function(d) { return d.data.name; });
 }
 
-// eventos de entrada
 function observarMudancaCodigo() {
     codigoEntrada = areaCodigoElemento.value;
     definirCarregando(false); 
@@ -320,20 +316,15 @@ async function processarUploadArquivo(evento) {
     }
 }
 
-// comunicaçao com API
 async function chamarAPICompilacao(codigo) {
     const url = '/api/compilar';
-    
     const resposta = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ codigo: codigo })
     });
     
     const dados = await resposta.json();
-    
     if (resposta.ok) {
         return dados; 
     } else {
@@ -350,13 +341,7 @@ async function executarCompilacaoGeral() {
     definirCarregando(true);
     definirAlerta(null);
     
-    dadosSaida = { 
-        ast: null, 
-        astJson: null, 
-        simbolos: null, 
-        saida: "Iniciando compilação (aguarde)...", 
-        codigoPython: null 
-    };
+    dadosSaida = { ast: null, astJson: null, simbolos: null, saida: "Iniciando compilação (aguarde)...", codigoPython: null };
     atualizarPainelSaida();
 
     try {
@@ -383,7 +368,7 @@ async function executarCompilacaoGeral() {
             dadosSaida.saida = resultados.tokens + "\n\n--- TRADUÇÃO PÓS-FIXA ---\n" + resultados.traducao_posfixa;
         } else {
             definirAlerta("Erros encontrados durante a compilação.", 'erro');
-            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS ---\n" + listaErros;
+            dadosSaida.saida = resultados.tokens + "\n\n" + "--- ERROS FINAIS ---\n" + listaErros;
         }
 
     } catch (erro) {
@@ -398,45 +383,29 @@ async function executarCompilacaoGeral() {
 }
 
 function limparSaida() {
-    dadosSaida = {
-        ast: null,
-        astJson: null,
-        simbolos: null,
-        saida: "Saída limpa. Execute uma nova compilação.",
-        codigoPython: null
-    };
-
+    dadosSaida = { ast: null, astJson: null, simbolos: null, saida: "Saída limpa. Execute uma nova compilação.", codigoPython: null };
     areaGraficaElemento.innerHTML = '';
-
     atualizarPainelSaida();
     selecionarAba('saida');
     definirAlerta("Painel de Saída limpo.", 'sucesso', 2000);
 }
 
 function executar() {
-    executarCompilacaoGeral().then(function() {
-        selecionarAba('saida');
-    });
+    executarCompilacaoGeral().then(function() { selecionarAba('saida'); });
 }
 
-//function exibirAST() {
-//    executarCompilacaoGeral().then(function() {
-//        selecionarAba('ast');
-//    });
-//}
-//
-//function exibirSimbolos() {
-//    executarCompilacaoGeral().then(function() {
-//        selecionarAba('simbolos');
-//    });
-//}
-//
-//function gerarPython() {
-//    executarCompilacaoGeral().then(function() {
-//        selecionarAba('python');
-//    });
-//}
-//
+function exibirAST() {
+    executarCompilacaoGeral().then(function() { selecionarAba('ast'); });
+}
+
+function exibirSimbolos() {
+    executarCompilacaoGeral().then(function() { selecionarAba('simbolos'); });
+}
+
+function gerarPython() {
+    executarCompilacaoGeral().then(function() { selecionarAba('python'); });
+}
+
 btnAlternarTema.addEventListener('click', alternarTema);
 areaCodigoElemento.addEventListener('input', observarMudancaCodigo);
 

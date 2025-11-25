@@ -1,4 +1,4 @@
-from src.parser_ast import BinOpNode, BlockNode, IfNode, WhileNode, ForNode, NumeroNode, IdNode, ArrayNode, ArrayAccessNode
+from src.parser_ast import BinOpNode, BlockNode, IfNode, WhileNode, ForNode, NumeroNode, IdNode, ArrayNode, ArrayAccessNode, CommentNode
 
 class TabelaSimbolos:
     def __init__(self):
@@ -17,7 +17,6 @@ class TabelaSimbolos:
             val = dados['valor']
             valor_str = str(val)
             
-            # Formatação para ficar bonito na tabela
             if isinstance(val, list):
                 if len(val) > 5:
                     valor_str = str(val[:4])[:-1] + ", ...]"
@@ -29,11 +28,32 @@ class TabelaSimbolos:
             print(f"{nome:<15} | {dados['tipo']:<10} | {valor_str}")
 
 class Semantico:
-    def __init__(self, arvore):
+    def __init__(self, arvore, codigo_fonte=""):
         self.arvore = arvore
         self.tabela = TabelaSimbolos()
         self.erros = []
         self.loop_counter = 0
+        self.linhas = codigo_fonte.split('\n')
+
+    # Método para desenhar a setinha no erro (Igual ao Lexico)
+    def _formatar_erro(self, pos, msg):
+        if pos < 0: return f"Erro Semântico: {msg}"
+        
+        COR = "\033[31m"
+        RESET = "\033[0m"
+        contador = 0
+        
+        for num_linha, conteudo in enumerate(self.linhas, start=1):
+            if contador + len(conteudo) + 1 > pos:
+                coluna = max(0, min(pos - contador, len(conteudo)))
+                
+                linha_cor = conteudo[:coluna] + f"{COR}{conteudo[coluna:coluna+1] or ' '}{RESET}" + conteudo[coluna+1:]
+                underline = " " * coluna + f"{COR}^{RESET}"
+                
+                return f"Erro Semântico na linha {num_linha}: {msg}\n    {linha_cor}\n    {underline}"
+            
+            contador += len(conteudo) + 1
+        return f"Erro Semântico: {msg}"
 
     def analisar(self):
         self.erros = []
@@ -45,12 +65,14 @@ class Semantico:
         return self.erros
 
     def _visitar(self, node):
-        # Despacha para o método correto baseado no nome da classe
         method_name = f'visitar_{type(node).__name__}'
         method = getattr(self, method_name, self.visitar_generico)
         return method(node)
 
     def visitar_generico(self, node):
+        pass
+
+    def visitar_CommentNode(self, node):
         pass
 
     def visitar_BlockNode(self, node):
@@ -70,7 +92,7 @@ class Semantico:
             self._visitar(node.block)
             self.loop_counter += 1
             if self.loop_counter > limite:
-                self.erros.append("Erro: Loop infinito interrompido por segurança.")
+                self.erros.append(self._formatar_erro(node.pos, "Loop infinito interrompido."))
                 break
 
     def visitar_ForNode(self, node):
@@ -81,49 +103,43 @@ class Semantico:
             self._visitar(node.increment)
             self.loop_counter += 1
             if self.loop_counter > limite:
-                self.erros.append("Erro: Loop infinito interrompido por segurança.")
+                self.erros.append(self._formatar_erro(node.pos, "Loop infinito interrompido."))
                 break
 
-    # --- TRATAMENTO DE ARRAYS ---
-    
     def visitar_ArrayNode(self, node):
-        # Cria array: x = [10] -> Cria uma lista de zeros do tamanho pedido
         tamanho = self._visitar(node.tamanho)
         
         if not isinstance(tamanho, int):
-            self.erros.append(f"Erro Semântico: Tamanho do array deve ser um número inteiro.")
+            self.erros.append(self._formatar_erro(node.pos, "Tamanho do array deve ser inteiro."))
             return []
             
         if tamanho < 0:
-            self.erros.append(f"Erro Semântico: Tamanho do array não pode ser negativo.")
+            self.erros.append(self._formatar_erro(node.pos, "Tamanho do array não pode ser negativo."))
             return []
             
-        # Retorna uma lista preenchida com zeros
         return [0] * tamanho
 
     def visitar_ArrayAccessNode(self, node):
-        # Leitura de valor: y = x[i]
         nome_array = node.array.nome
         dados = self.tabela.obter(nome_array)
         
         if not dados:
-            self.erros.append(f"Erro Semântico: Array '{nome_array}' não declarado.")
+            self.erros.append(self._formatar_erro(node.pos, f"Array '{nome_array}' não declarado."))
             return 0
         
         if not isinstance(dados['valor'], list):
-            self.erros.append(f"Erro Semântico: Variável '{nome_array}' não é um array.")
+            self.erros.append(self._formatar_erro(node.pos, f"Variável '{nome_array}' não é um array."))
             return 0
 
         indice = self._visitar(node.indice)
         lista = dados['valor']
 
-        # Bounds Check (Verificação de Limites)
         if not isinstance(indice, int):
-            self.erros.append(f"Erro Semântico: Índice do array deve ser inteiro.")
+            self.erros.append(self._formatar_erro(node.pos, "Índice do array deve ser inteiro."))
             return 0
             
         if indice < 0 or indice >= len(lista):
-            self.erros.append(f"Erro de Execução (Bounds Check): Índice {indice} fora dos limites do array '{nome_array}' (tamanho: {len(lista)}).")
+            self.erros.append(self._formatar_erro(node.pos, f"Índice {indice} fora dos limites."))
             return 0
         
         return lista[indice]
@@ -131,31 +147,25 @@ class Semantico:
     def visitar_BinOpNode(self, node):
         op = node.op[1]
 
-        # --- 1. Atribuição (=) ---
         if op == '=':
             valor = self._visitar(node.right)
             
-            # Verifica se é atribuição em posição de array: x[0] = 10
             if isinstance(node.left, ArrayAccessNode):
                 nome_arr = node.left.array.nome
                 dados = self.tabela.obter(nome_arr)
                 
                 if not dados or not isinstance(dados['valor'], list):
-                    self.erros.append(f"Erro Semântico: Tentativa de atribuir índice em variável que não é array '{nome_arr}'.")
                     return 0
                 
                 indice = self._visitar(node.left.indice)
                 
-                # Bounds Check na escrita
                 if indice < 0 or indice >= len(dados['valor']):
-                    self.erros.append(f"Erro de Execução (Bounds Check): Índice {indice} fora dos limites na atribuição.")
+                    self.erros.append(self._formatar_erro(node.left.pos, f"Índice {indice} fora dos limites."))
                     return 0
                 
-                # Realiza a alteração na lista
                 dados['valor'][indice] = valor
                 return valor
 
-            # Atribuição em Variável Simples
             nome_var = node.left.nome
             if isinstance(valor, list):
                 tipo = 'array'
@@ -169,25 +179,16 @@ class Semantico:
             self.tabela.definir(nome_var, tipo, valor)
             return valor
 
-        # --- 2. Curto-Circuito (Short-Circuit) ---
-        # Avalia o lado esquerdo primeiro
         val_esq = self._visitar(node.left)
 
         if op == 'e':
-            # Se o lado esquerdo for Falso, NÃO executa o direito
-            if not val_esq:
-                return False
-            # Se for verdadeiro, precisa avaliar o direito
+            if not val_esq: return False
             return bool(self._visitar(node.right))
         
         if op == 'ou':
-            # Se o lado esquerdo for Verdadeiro, NÃO executa o direito
-            if val_esq:
-                return True
-            # Se for falso, precisa avaliar o direito
+            if val_esq: return True
             return bool(self._visitar(node.right))
 
-        # --- 3. Operações Matemáticas (Avalia direita agora) ---
         val_dir = self._visitar(node.right)
 
         if val_esq is None or val_dir is None:
@@ -200,12 +201,11 @@ class Semantico:
             
             if op == '/': 
                 if val_dir == 0:
-                    self.erros.append("Erro de Execução: Divisão por zero.")
+                    self.erros.append(self._formatar_erro(node.pos, "Divisão por zero."))
                     return 0
                 return val_esq / val_dir
                 
             if op == '**': return val_esq ** val_dir
-            
             if op == '>': return val_esq > val_dir
             if op == '<': return val_esq < val_dir
             if op == '>=': return val_esq >= val_dir
@@ -214,7 +214,7 @@ class Semantico:
             if op == '!=': return val_esq != val_dir
             
         except Exception:
-            self.erros.append(f"Erro de Operação: Não foi possível calcular {val_esq} {op} {val_dir}.")
+            self.erros.append(self._formatar_erro(node.pos, f"Erro na operação '{op}'."))
             return 0
 
     def visitar_NumeroNode(self, node):
@@ -231,7 +231,8 @@ class Semantico:
         if dados:
             return dados['valor']
         else:
-            msg_erro = f"Erro Semântico: Variável '{node.nome}' não definida."
-            if msg_erro not in self.erros:
-                self.erros.append(msg_erro)
+            msg = f"Variável '{node.nome}' não definida."
+            erro_fmt = self._formatar_erro(node.pos, msg)
+            if erro_fmt not in self.erros:
+                self.erros.append(erro_fmt)
             return 0

@@ -2,7 +2,7 @@ from contextlib import redirect_stdout
 import io
 
 from .lexico import Lexico
-from .parser_ast import ParserAST, BinOpNode, BlockNode, IfNode, WhileNode, ForNode, IdNode, NumeroNode
+from .parser_ast import ParserAST, BinOpNode, BlockNode, IfNode, WhileNode, ForNode, IdNode, NumeroNode, ArrayNode, ArrayAccessNode, CommentNode
 from .semantico import Semantico, TabelaSimbolos
 from .tradutor import Tradutor, Gerador
 
@@ -22,8 +22,11 @@ def ast_para_string(node, nivel=0):
         elif attr == 'op': saida += f"{indent}  {attr}: {value[1]} ({value[0]})\n"
     return saida
 
+# --- FUNÇÃO JSON ---
 def ast_para_json(node):
     if not node: return None
+    
+    # Padrão se não reconhecer
     data = {"name": "?", "type": "default", "children": []}
 
     if isinstance(node, BlockNode):
@@ -31,33 +34,56 @@ def ast_para_json(node):
         for stmt in node.statements:
             child = ast_para_json(stmt)
             if child: data["children"].append(child)
+            
     elif isinstance(node, IfNode):
         data["name"] = "SE"; data["type"] = "if"
         data["children"].append(ast_para_json(node.condition))
         data["children"].append(ast_para_json(node.true_block))
         if node.false_block:
             f = ast_para_json(node.false_block); f["name"] = "SENAO"; data["children"].append(f)
+            
     elif isinstance(node, WhileNode):
         data["name"] = "ENQUANTO"; data["type"] = "loop"
         data["children"].append(ast_para_json(node.condition))
         data["children"].append(ast_para_json(node.block))
+        
     elif isinstance(node, ForNode):
         data["name"] = "PARA"; data["type"] = "loop"
-        h = {"name": "(head)", "type": "default", "children": [ast_para_json(node.init), ast_para_json(node.condition), ast_para_json(node.increment)]}
+        h = {"name": "(regras)", "type": "default", "children": [ast_para_json(node.init), ast_para_json(node.condition), ast_para_json(node.increment)]}
         data["children"].append(h); data["children"].append(ast_para_json(node.block))
+        
     elif isinstance(node, BinOpNode):
         data["name"] = node.op[1]; data["type"] = "pow" if node.op[1]=='**' else "op"
         data["children"] = [ast_para_json(node.left), ast_para_json(node.right)]
+        
     elif isinstance(node, NumeroNode):
         data["name"] = str(node.valor); data["type"] = "number"
+        
     elif isinstance(node, IdNode):
         data["name"] = node.nome; data["type"] = "id"
+
+    elif isinstance(node, ArrayNode):
+        data["name"] = "[]"; data["type"] = "number"
+        data["children"].append(ast_para_json(node.tamanho))
+
+    elif isinstance(node, ArrayAccessNode):
+        # Mostra o nome do array com [..]
+        data["name"] = f"{node.array.nome}[..]"; data["type"] = "id"
+        data["children"].append(ast_para_json(node.indice))
+        
+    elif isinstance(node, CommentNode):
+        # Limpa o texto para não ficar gigante
+        txt = node.texto.replace('$', '').strip()
+        if len(txt) > 15: txt = txt[:12] + "..."
+        data["name"] = f"📝 {txt}"; data["type"] = "default"
+    # ------------------------------------------------------
+
     return data
 
 def compilar_para_web(codigo_fonte: str):
     resultados = {
         'tokens': '', 'erros_lexicos': [],
-        'ast': '', 'ast_json': None, 
+        'ast': '', 'ast_json': None,
         'erros_sintaticos': [], 'erros_semanticos': [],
         'tabela_simbolos': '',
         'traducao_posfixa': '', 'codigo_python': '',
@@ -77,11 +103,11 @@ def compilar_para_web(codigo_fonte: str):
 
     if arvores_raiz and arvores_raiz[0]:
         resultados['ast'] = ast_para_string(arvores_raiz[0])
-        resultados['ast_json'] = ast_para_json(arvores_raiz[0])
+        resultados['ast_json'] = ast_para_json(arvores_raiz[0]) # Chama a função corrigida
 
     if erros_sintaticos: return resultados
 
-    semantico = Semantico(arvores_raiz[0]); erros_semanticos = semantico.analisar()
+    semantico = Semantico(arvores_raiz[0], codigo_fonte); erros_semanticos = semantico.analisar()
     resultados['erros_semanticos'] = erros_semanticos
     f = io.StringIO(); 
     with redirect_stdout(f): semantico.tabela.imprimir()
@@ -89,12 +115,10 @@ def compilar_para_web(codigo_fonte: str):
 
     if erros_semanticos: return resultados
 
-    # Tradução Pós-Fixa
     tradutor = Tradutor(); f = io.StringIO()
     with redirect_stdout(f): tradutor.traduzir(arvores_raiz[0])
     resultados['traducao_posfixa'] = f.getvalue()
 
-    # Tradução Python
     try:
         py_trad = Gerador()
         resultados['codigo_python'] = py_trad.traduzir(arvores_raiz[0])
