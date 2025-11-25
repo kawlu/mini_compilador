@@ -22,7 +22,6 @@ def ast_para_string(node, nivel=0):
         elif attr == 'op': saida += f"{indent}  {attr}: {value[1]} ({value[0]})\n"
     return saida
 
-# --- ADIÇÃO CIRÚRGICA: Função JSON para D3.js ---
 def ast_para_json(node):
     if not node: return None
     data = {"name": "?", "type": "default", "children": []}
@@ -54,7 +53,6 @@ def ast_para_json(node):
     elif isinstance(node, IdNode):
         data["name"] = node.nome; data["type"] = "id"
     return data
-# ------------------------------------------------
 
 def compilar_para_web(codigo_fonte: str):
     resultados = {
